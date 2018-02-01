@@ -46,3 +46,8 @@
     - mariadb
   roles:
     - mariadb
+
+- name: Deploy sysbench
+  hosts: sysbench
+  roles:
+    - sysbench

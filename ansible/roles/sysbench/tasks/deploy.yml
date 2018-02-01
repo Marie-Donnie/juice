@@ -1,0 +1,6 @@
+---
+- name: Start sysbench
+  docker_container:
+    name: "sysbench"
+    image: "severalnines/sysbench"
+    detach: True

@@ -1,0 +1,6 @@
+---
+- name: Destroying sysbench container
+  docker_container:
+    name: "sysbench"
+    state: absent
+    force_kill: yes
