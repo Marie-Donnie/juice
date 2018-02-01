@@ -1,0 +1,35 @@
+registry:
+  type: internal
+g5k:
+  walltime: "6:00:00"
+  dhcp: true
+  job_name: juice-tests
+  env_name: debian9-x64-nfs
+  resources:
+    machines:
+      - roles:
+          - registry
+          - telegraf
+          - influxdb
+          - grafana
+          - cockroachdb-master
+          # - mariadb-master
+        cluster: parapluie
+        nodes: 1
+        primary_network: n1
+        secondary_networks: []
+      - roles:
+          - telegraf
+          - cockroachdb
+          # - mariadb
+        cluster: parapluie
+        nodes: 3
+        primary_network: n1
+        secondary_networks: []
+    networks:
+      - id: n1
+        roles:
+          - control_network
+          - internal_network
+        type: prod
+        site: rennes

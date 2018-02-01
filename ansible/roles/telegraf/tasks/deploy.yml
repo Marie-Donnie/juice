@@ -1,0 +1,24 @@
+---
+- name: Configuring telegraf
+  template:
+    src: telegraf.conf.j2
+    dest: /telegraf.conf
+
+- name: Install telegraf container
+  docker_container:
+    name: "telegraf"
+    image: "telegraf"
+    detach: True
+    state: started
+    network_mode: host
+  # ports:
+  #    - 9273:9273
+    volumes:
+      - "/telegraf.conf:/etc/telegraf/telegraf.conf:ro"
+      - "/sys:/rootfs/sys:ro"
+      - "/proc:/rootfs/proc:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    env:
+      HOST_PROC: /rootfs/proc
+      HOST_SYS: /rootfs/sys
+

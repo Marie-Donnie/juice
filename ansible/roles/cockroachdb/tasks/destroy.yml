@@ -1,0 +1,6 @@
+---
+- name: Destroying CockroachDB container
+  docker_container:
+    name: "cockroachdb-{{ inventory_hostname_short }}"
+    state: absent
+    force_kill: yes

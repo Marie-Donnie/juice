@@ -1,0 +1,6 @@
+---
+- name: Destroying CockroachDB-master container
+  docker_container:
+    name: "cockroachdb-master"
+    state: absent
+    force_kill: yes

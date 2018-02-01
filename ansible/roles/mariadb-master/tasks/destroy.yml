@@ -1,0 +1,6 @@
+---
+- name: Destroying MariaDB-master container
+  docker_container:
+    name: "mariadb-master"
+    state: absent
+    force_kill: yes

@@ -1,0 +1,27 @@
+#
+# Galera Cluster: mandatory settings
+#
+
+[server]
+bind-address=0.0.0.0
+binlog_format=row
+default_storage_engine=InnoDB
+innodb_autoinc_lock_mode=2
+innodb_locks_unsafe_for_binlog=1
+query_cache_size=0
+query_cache_type=0
+
+[galera]
+wsrep_on=ON
+wsrep_provider="/usr/lib/galera/libgalera_smm.so"
+wsrep_cluster_address="gcomm://{% for it in item %}{{ hostvars[it]['ansible_' + control_network]['ipv4']['address'] }}{% if not loop.last %},{% endif%}{% endfor %}"
+wsrep-sst-method=rsync
+
+#
+# Optional setting
+#
+
+# Tune this value for your system, roughly 2x cores; see https://mariadb.com/kb/en/mariadb/galera-clust$
+# wsrep_slave_threads=1
+
+# innodb_flush_log_at_trx_commit=0

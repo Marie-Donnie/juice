@@ -1,0 +1,9 @@
+---
+- name: Start cockroachdb master
+  docker_container:
+    name: "cockroachdb-master"
+    image: "cockroachdb/cockroach"
+    hostname: "{{ inventory_hostname }}"
+    detach: True
+    ports: 26257:26257
+    command: start --insecure --advertise-host="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}"

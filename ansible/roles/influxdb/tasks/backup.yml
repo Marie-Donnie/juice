@@ -1,0 +1,22 @@
+---
+# NOTE(msimonin): using command since docker_container(state=stopped) has a
+# weird behaviour
+- name: Stopping influxdb
+  command: docker stop influxdb
+
+- name: Taring the data directory
+  archive:
+    path:
+      - /influxdb-data
+    dest: /influxdb-data.tar.gz
+
+
+- name: Fetching influxdb data
+  fetch:
+    src: /influxdb-data.tar.gz
+    dest: "{{ backup_dir }}/influxdb-data.tar.gz"
+    flat: yes
+
+- name: Starting influxdb
+  command: docker start influxdb
+

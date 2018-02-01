@@ -1,0 +1,2 @@
+---
+influxdb_host: "{{ hostvars[groups['influxdb'][0]]['ansible_' + control_network]['ipv4']['address'] }}"

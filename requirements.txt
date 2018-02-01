@@ -1,0 +1,4 @@
+# creating command interfaces
+click>=6.7,<7
+# the library it is built on
+git+https://github.com/beyondtheclouds/enoslib@master

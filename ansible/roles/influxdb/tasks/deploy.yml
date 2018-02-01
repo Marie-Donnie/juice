@@ -1,0 +1,47 @@
+---
+- name: Copy influxdb conf
+  copy:
+    src: influxdb.conf
+    dest: /influxdb.conf
+
+- name: Copy types.db
+  copy:
+    src: types.db
+    dest: /types.db
+
+- name: Start the influx container
+  docker_container:
+    name: "influxdb"
+    image: "influxdb"
+    detach: True
+    # putting in the host network
+    # udp port binding seems to not work as expected
+    network_mode: host
+    # for the record
+    # ports:
+    #  - "8083:8083"
+    #  - "8086:8086"
+    #  # collectd metrics
+    #  - "25826:25826/udp"
+    state: started
+    expose:
+      - "8090"
+      - "8099"
+    volumes:
+      - "/influxdb.conf:/etc/influxdb/influxdb.conf"
+      - "/influxdb-data:/var/lib/influxdb"
+      - "/types.db:/usr/share/collectd/types.db"
+
+- name: Waiting for the influx service to become available
+  wait_for:
+    host: "localhost"
+    port: 8086
+    state: started
+    delay: 2
+    timeout: 120
+
+- name: Create the telegraf database
+  influxdb_database:
+    hostname: "localhost"
+    database_name: "telegraf"
+    state: present

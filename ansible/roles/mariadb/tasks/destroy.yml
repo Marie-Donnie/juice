@@ -1,0 +1,6 @@
+---
+- name: Destroying MariaDB container
+  docker_container:
+    name: "mariadb-{{ inventory_hostname_short }}"
+    state: absent
+    force_kill: yes

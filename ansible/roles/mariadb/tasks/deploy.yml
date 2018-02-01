@@ -1,0 +1,31 @@
+---
+- name: Create the directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - ["/opt/local/etc/mysql.conf.d/", "/mnt/data/mysql"]
+
+- name: Generate the configuration file
+  template:
+    src: mariadb.conf.j2
+    dest: /opt/local/etc/mysql.conf.d/mysql_server.cnf
+  with_list: "{{ [groups['all']] }}"
+
+- name: Start the MariaDB container
+  docker_container:
+    name: "mariadb-{{ inventory_hostname_short }}"
+    image: "mariadb"
+    detach: True
+    exposed_ports:
+      - 4567
+    published_ports:
+      - "3306:3306"
+      - "4567:4567"
+      - "4567:4567/udp"
+      - "4568:4568"
+      - "4444:4444"
+    volumes:
+      - "/opt/local/etc/mysql.conf.d:/etc/mysql/conf.d"
+      - "/mnt/data:/var/lib/mysql"
+    command: --wsrep_node_address="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}"

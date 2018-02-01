@@ -1,0 +1,48 @@
+---
+- name: Common configuration
+  hosts: all
+  roles:
+    - common
+    - registry
+    - telegraf
+
+- name: Apply role chrony
+  hosts:
+    - chrony-server
+    - chrony
+  roles:
+    - chrony
+
+- name: Deploy influx
+  hosts: influxdb
+  roles:
+    - influxdb
+
+- name: Deploy the grafana
+  hosts: grafana
+  roles:
+    - grafana
+
+- name: CockroachDB master deployment
+  hosts:
+    - cockroachdb-master
+  roles:
+    - cockroachdb-master
+
+- name: CockroachDB deployment
+  hosts:
+    - cockroachdb
+  roles:
+    - cockroachdb
+
+- name: MariaDB master deployment
+  hosts:
+    - mariadb-master
+  roles:
+    - mariadb-master
+
+- name: MariaDB deployment
+  hosts:
+    - mariadb
+  roles:
+    - mariadb
