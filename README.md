@@ -1,6 +1,6 @@
 # juice
 
-A tool to test OpenStack with MariaDB and CockroachDB using enoslib
+A tool to test OpenStack with MariaDB and CockroachDB using [enoslib](https://github.com/BeyondTheClouds/enoslib)
 
 
 ## Installation
