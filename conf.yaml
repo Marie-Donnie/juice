@@ -12,16 +12,14 @@ g5k:
           - telegraf
           - influxdb
           - grafana
-          - cockroachdb-master
-          # - mariadb-master
+          - db-master
         cluster: parapluie
         nodes: 1
         primary_network: n1
         secondary_networks: []
       - roles:
           - telegraf
-          - cockroachdb
-          # - mariadb
+          - db-slave
         cluster: parapluie
         nodes: 3
         primary_network: n1

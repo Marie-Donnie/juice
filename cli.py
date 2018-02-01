@@ -22,19 +22,22 @@ def cli():
 
 
 @cli.command(help="Claim resources from g5k and configure them")
+@click.option("--db",
+              default="mariadb",
+              help="Use the given database")
 @click.option("--conf",
               default=DEFAULT_CONF,
               help="Configuration file to use")
 @click.option("--env",
               help="Use this environment directory instead of the default one")
-def deploy(conf, env):
+def deploy(db, conf, env):
     config = {}
     with open(conf) as f:
         config = yaml.load(f)
 
     tasks.g5k(config=config, env=env)
     tasks.inventory()
-    tasks.prepare()
+    tasks.prepare(db=db)
 
 
 @cli.command(help="Claim resources on Grid'5000 (from a frontend)")

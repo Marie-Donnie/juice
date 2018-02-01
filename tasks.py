@@ -4,6 +4,10 @@ from enoslib.api import run_ansible, generate_inventory, emulate_network, valida
 from enoslib.task import enostask
 from enoslib.infra.enos_g5k.provider import G5k
 
+
+DB = "mariadb"
+
+
 tc = {
     "enable": True,
     "default_delay": "20ms",
@@ -29,11 +33,13 @@ def inventory(env=None, **kwargs):
 
 
 @enostask()
-def prepare(env=None, **kwargs):
+def prepare(env=None, db=DB, **kwargs):
     # Generate inventory
     extra_vars = {
-        "registry": env["config"]["registry"]
+        "registry": env["config"]["registry"],
+        "db": db
     }
+    print(db)
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
 

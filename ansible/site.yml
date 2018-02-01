@@ -25,27 +25,31 @@
 
 - name: CockroachDB master deployment
   hosts:
-    - cockroachdb-master
+    - db-master
   roles:
-    - cockroachdb-master
+    - { role: cockroachdb-master,
+        when: db == "cockroachdb" }
 
 - name: CockroachDB deployment
   hosts:
-    - cockroachdb
+    - db-slave
   roles:
-    - cockroachdb
+    - { role: cockroachdb,
+        when: db == "cockroachdb" }
 
 - name: MariaDB master deployment
   hosts:
-    - mariadb-master
+    - db-master
   roles:
-    - mariadb-master
+    - { role: mariadb-master,
+        when: db == "mariadb" }
 
 - name: MariaDB deployment
   hosts:
-    - mariadb
+    - db-slave
   roles:
-    - mariadb
+    - { role: mariadb,
+        when: db == "mariadb" }
 
 - name: Deploy sysbench
   hosts: sysbench
