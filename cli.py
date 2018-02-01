@@ -35,7 +35,6 @@ def deploy(conf, env):
     tasks.g5k(config=config, env=env)
     tasks.inventory()
     tasks.prepare()
-    print("lol")
 
 
 @cli.command(help="Claim resources on Grid'5000 (from a frontend)")
