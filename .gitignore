@@ -106,3 +106,4 @@ ENV/
 # enos folders
 enos_*/
 current/
+current
