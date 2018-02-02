@@ -1,6 +1,16 @@
 ---
-- name: Start sysbench
+- name: Start sysbench on MariaDB
   docker_container:
     name: "sysbench"
     image: "severalnines/sysbench"
     detach: True
+    command: sysbench --db-driver=mysql --table-size=100000 --mysql-host="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}" --mysql-port=3306 --mysql-user=sbtest --mysql-password=sbtest oltp_read_write prepare
+  when: db == 'mariadb'
+
+- name: Start sysbench on CockroachDB
+  docker_container:
+    name: "sysbench"
+    image: "severalnines/sysbench"
+    detach: True
+    command: sysbench --db-driver=pgsql --pgsql-host=127.0.0.1 --pgsql-port=26257 --pgsql-user=root --table-size=1000000 oltp_read_write prepare
+  when: db == 'cockroachdb'

@@ -13,6 +13,7 @@ g5k:
           - influxdb
           - grafana
           - db-master
+          - sysbench
         cluster: parapluie
         nodes: 1
         primary_network: n1
