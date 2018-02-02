@@ -107,3 +107,6 @@ ENV/
 enos_*/
 current/
 current
+
+# ansible
+site.retry
