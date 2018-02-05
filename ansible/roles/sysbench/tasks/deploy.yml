@@ -21,6 +21,10 @@
 
   # CockroachDB
 
+- name: Create CockroachDB sbtest database for sysbench
+  command: docker exec cockroachdb-master ./cockroach sql --insecure --execute="CREATE DATABASE sbtest;"
+  when: db == 'cockroachdb'
+
 - name: Start sysbench on CockroachDB
   docker_container:
     name: "sysbench"
