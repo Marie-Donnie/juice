@@ -1,0 +1,1 @@
+dbmaster_node: "{{ groups['database'][0] }}"

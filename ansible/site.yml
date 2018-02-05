@@ -25,28 +25,14 @@
 
 - name: CockroachDB master deployment
   hosts:
-    - db-master
-  roles:
-    - { role: cockroachdb-master,
-        when: db == "cockroachdb" }
-
-- name: CockroachDB deployment
-  hosts:
-    - db-slave
+    - database
   roles:
     - { role: cockroachdb,
         when: db == "cockroachdb" }
 
 - name: MariaDB master deployment
   hosts:
-    - db-master
-  roles:
-    - { role: mariadb-master,
-        when: db == "mariadb" }
-
-- name: MariaDB deployment
-  hosts:
-    - db-slave
+    - database
   roles:
     - { role: mariadb,
         when: db == "mariadb" }

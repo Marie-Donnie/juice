@@ -12,7 +12,7 @@ g5k:
           - telegraf
           - influxdb
           - grafana
-          - db-master
+          - database
           - sysbench
         cluster: parapluie
         nodes: 1
@@ -20,9 +20,9 @@ g5k:
         secondary_networks: []
       - roles:
           - telegraf
-          - db-slave
+          - database
         cluster: parapluie
-        nodes: 3
+        nodes: 2
         primary_network: n1
         secondary_networks: []
     networks:
