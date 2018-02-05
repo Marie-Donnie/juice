@@ -39,7 +39,7 @@ def prepare(env=None, db=DB, **kwargs):
         "registry": env["config"]["registry"],
         "db": db
     }
-    print(db)
+    env["db"]= db
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
 
@@ -75,5 +75,6 @@ def destroy(env=None, **kwargs):
     # Call destroy on each component
     extra_vars.update({
         "enos_action": "destroy",
+        "db": env["db"]
     })
     run_ansible(["ansible/site.yml"], env["inventory"], extra_vars=extra_vars)
