@@ -32,5 +32,13 @@
     name: "sysbench"
     image: "severalnines/sysbench"
     detach: True
-    command: sysbench --db-driver=pgsql --pgsql-host=127.0.0.1 --pgsql-port=26257 --pgsql-user=root --table-size=1000000 oltp_read_write prepare
+    command: sysbench --db-driver=pgsql --pgsql-host="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}" --pgsql-port=26257 --pgsql-user=root --table-size=1000000 oltp_read_write prepare
+  when: db == 'cockroachdb'
+
+- name: Run sysbench on CockroachDB
+  docker_container:
+    name: "sysbench"
+    image: "severalnines/sysbench"
+    detach: True
+    command: sysbench --db-driver=pgsql --pgsql-host="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}" --pgsql-port=26257 --pgsql-user=root --table-size=1000000 oltp_read_write run
   when: db == 'cockroachdb'

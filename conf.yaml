@@ -14,14 +14,14 @@ g5k:
           - grafana
           - database
           - sysbench
-        cluster: parapluie
+        cluster: grisou
         nodes: 1
         primary_network: n1
         secondary_networks: []
       - roles:
           - telegraf
           - database
-        cluster: parapluie
+        cluster: grisou
         nodes: 2
         primary_network: n1
         secondary_networks: []
@@ -31,4 +31,4 @@ g5k:
           - control_network
           - internal_network
         type: prod
-        site: rennes
+        site: nancy
