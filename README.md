@@ -25,4 +25,4 @@ Change *conf.yaml* according to your needs
 
 ## Launch
 
-Launch with `./cli.py deploy`
+Launch with `./cli.py deploy` or `cli.py deploy --db=<db>` with <db> being 'cockroachdb' or 'mariadb' (default)
