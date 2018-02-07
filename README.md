@@ -25,4 +25,25 @@ Change *conf.yaml* according to your needs
 
 ## Launch
 
-Launch with `./cli.py deploy` or `cli.py deploy --db=<db>` with <db> being 'cockroachdb' or 'mariadb' (default)
+Launch with `./tasks.py deploy` or `./tasks.py deploy --db=<db>` with <db> being 'cockroachdb' or 'mariadb' (default)
+
+## Help
+
+```
+Tool to test Keystone over Galera and CockroachdB on Grid'5000 using Enoslib
+
+Usage:
+    juice [-h | --help] [-v | --version] <command> [<args>...]
+
+Options:
+    -h --help      Show this help
+    -v --version   Show version number
+
+Commands:
+    deploy         Claim resources from g5k and configure them
+    g5k            Claim resources on Grid'5000 (from a frontend)
+    inventory      Generate the Ansible inventory file
+    prepare        Configure the resources
+    destroy        Destroy all the running dockers (not destroying the resources)
+    backup         Backup the environment
+```
