@@ -1,5 +1,5 @@
 registry:
-  type: internal
+  type: none
 g5k:
   walltime: "6:00:00"
   dhcp: true
