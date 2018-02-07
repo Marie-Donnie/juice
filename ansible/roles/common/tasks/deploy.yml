@@ -6,6 +6,7 @@
     update_cache: yes
   with_items:
     - python-setuptools
+    - libpq-dev
     # - git
     # - gcc
     # - python-dev
@@ -20,6 +21,7 @@
   with_items:
     - docker
     - influxdb
+    - psycopg2
 
 - name: Mount /run
   command: mount --make-shared /run
