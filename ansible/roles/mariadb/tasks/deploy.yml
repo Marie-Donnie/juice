@@ -8,7 +8,7 @@
 
 - name: Generate the configuration file
   template:
-    src: mariadb-master.conf.j2
+    src: mariadb.conf.j2
     dest: /opt/local/etc/mysql.conf.d/mysql_server.cnf
   with_list: "{{ [groups['all']] }}"
 
