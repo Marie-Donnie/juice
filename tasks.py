@@ -23,7 +23,9 @@ import logging
 import yaml
 
 from docopt import docopt
-from enoslib.api import run_ansible, generate_inventory, emulate_network, validate_network
+from enoslib.api import (run_ansible, generate_inventory,
+                         emulate_network, validate_network,
+                         run_command)
 from enoslib.task import enostask
 from enoslib.infra.enos_g5k.provider import G5k
 
@@ -53,7 +55,6 @@ Options:
                        deployment [default: ./conf.yaml].
   --db DATABASE        Database to deploy on [default: cockroachdb]
     """
-
     config = {}
     with open(conf) as f:
         config = yaml.load(f)
@@ -66,6 +67,11 @@ Options:
 @doc()
 @enostask(new=True)
 def g5k(env=None, force=False, config=None,  **kwargs):
+    """
+usage: juice g5k
+
+Claim resources on Grid'5000 (from a frontend)
+    """
     provider = G5k(config["g5k"])
     roles, networks = provider.init(force_deploy=force)
     env["config"] = config
@@ -76,6 +82,11 @@ def g5k(env=None, force=False, config=None,  **kwargs):
 @doc()
 @enostask()
 def inventory(env=None, **kwargs):
+    """
+usage: juice inventory
+
+Generate the Ansible inventory file, requires a g5k execution
+    """
     roles = env["roles"]
     networks = env["networks"]
     env["inventory"] = os.path.join(env["resultdir"], "hosts")
@@ -116,6 +127,11 @@ def validate(env=None, **kwargs):
 @doc()
 @enostask()
 def backup(env=None, **kwargs):
+    """
+usage: juice backup
+
+Backup the environment, requires g5k, inventory and prepare executions
+    """
     extra_vars = {
         "enos_action": "backup",
         "backup_dir": os.path.join(os.getcwd(), "current")
@@ -126,6 +142,11 @@ def backup(env=None, **kwargs):
 @doc()
 @enostask()
 def destroy(env=None, **kwargs):
+    """
+usage: juice destroy
+
+Destroy all the running dockers (not destroying the resources), requires g5k and inventory executions
+    """
     extra_vars = {}
     # Call destroy on each component
     extra_vars.update({
