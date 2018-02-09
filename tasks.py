@@ -41,8 +41,6 @@ tc = {
 }
 
 
-
-
 @doc()
 def deploy(conf, db, **kwargs):
     """
@@ -60,9 +58,9 @@ Options:
     with open(conf) as f:
         config = yaml.load(f)
 
-    # g5k(config=config, env=env)
-    # inventory()
-    # prepare(db=db)
+    g5k(config=config)
+    inventory()
+    prepare(db=db)
 
 
 @doc()
@@ -92,7 +90,7 @@ def prepare(env=None, db='cockroachdb', **kwargs):
         "registry": env["config"]["registry"],
         "db": db
     }
-    env["db"]= db
+    env["db"] = db
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
 
