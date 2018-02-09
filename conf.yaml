@@ -15,14 +15,7 @@ g5k:
           - database
           - sysbench
         cluster: grisou
-        nodes: 1
-        primary_network: n1
-        secondary_networks: []
-      - roles:
-          - telegraf
-          - database
-        cluster: grisou
-        nodes: 2
+        nodes: 3
         primary_network: n1
         secondary_networks: []
     networks:
