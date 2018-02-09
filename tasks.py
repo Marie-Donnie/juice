@@ -44,16 +44,18 @@ tc = {
 
 
 @doc()
-def deploy(conf, db, **kwargs):
+def deploy(conf, db, locality, **kwargs):
     """
-usage: juice deploy  [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}]
+usage: juice deploy [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}]
+                    [--locality]
 
 Claim resources from g5k and configure them.
 
 Options:
-  --conf CONFIG_PATH   Path to the configuration file describing the
-                       deployment [default: ./conf.yaml].
-  --db DATABASE        Database to deploy on [default: cockroachdb]
+  --conf CONFIG_PATH    Path to the configuration file describing the
+                        deployment [default: ./conf.yaml]
+  --db DATABASE         Database to deploy on [default: cockroachdb]
+  --locality            Use follow-the-workload (only for CockroachDB)
     """
     config = {}
     with open(conf) as f:
@@ -61,7 +63,7 @@ Options:
 
     g5k(config=config)
     inventory()
-    prepare(db=db)
+    prepare(db=db, locality=locality)
 
 
 @doc()
@@ -95,11 +97,17 @@ Generate the Ansible inventory file, requires a g5k execution
 
 @doc()
 @enostask()
-def prepare(env=None, db='cockroachdb', **kwargs):
+def prepare(env=None, db='cockroachdb', locality='none', **kwargs):
+    """
+usage: juice prepare
+
+Configure the resources, requires both g5k and inventory executions
+    """
     # Generate inventory
     extra_vars = {
         "registry": env["config"]["registry"],
-        "db": db
+        "db": db,
+        "locality": locality,
     }
     env["db"] = db
     # use deploy of each role
