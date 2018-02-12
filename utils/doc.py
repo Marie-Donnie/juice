@@ -9,12 +9,12 @@ def doc():
         @wraps(fn)
         def decorated(*args, **kwargs):
             # Format the arguments for convenient use
-            for k,v in kwargs.items():
+            for k, v in kwargs.items():
                 if k.startswith('--'):
-                    kwargs[k.lstrip('--')]=v
+                    kwargs[k.lstrip('--')] = v
             # Proceeds with the function execution
             fn(*args, **kwargs)
-        DOC_GLOBAL[fn.__name__]= decorated
+        DOC_GLOBAL[fn.__name__] = decorated
         return decorated
     return decorator
 
@@ -30,4 +30,12 @@ Usage:
     juice [-h | --help] [-v | --version] <command> [<args>...]
 
     """
-    exit("%r is not a juice command. \n%s" % (kwargs['<command>'], error_lookup.__doc__))
+    exit("%r is not a juice command. \n%s" % (kwargs['<command>'],
+                                              error_lookup.__doc__))
+
+
+def db_validation(db):
+    databases = ['cockroachdb', 'mariadb']
+    if db not in databases:
+        exit("%s is not an allowed database. Try one of the following: %s"
+             % (db, ', '.join(databases)))

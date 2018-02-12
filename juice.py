@@ -24,12 +24,11 @@ import yaml
 
 from docopt import docopt
 from enoslib.api import (run_ansible, generate_inventory,
-                         emulate_network, validate_network,
-                         run_command)
+                         emulate_network, validate_network)
 from enoslib.task import enostask
 from enoslib.infra.enos_g5k.provider import G5k
 
-from utils.doc import doc, doc_lookup, DOC_GLOBAL
+from utils.doc import doc, doc_lookup, db_validation
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -60,6 +59,7 @@ Options:
     config = {}
     with open(conf) as f:
         config = yaml.load(f)
+    db_validation(db)
 
     g5k(config=config)
     inventory()
@@ -106,6 +106,7 @@ Configure the resources, requires both g5k and inventory executions
   --db DATABASE         Database to deploy on [default: cockroachdb]
   --locality            Use follow-the-workload (only for CockroachDB)
     """
+    db_validation(db)
     # Generate inventory
     extra_vars = {
         "registry": env["config"]["registry"],
