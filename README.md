@@ -21,11 +21,11 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Change *conf.yaml* according to your needs
+Change *conf.yaml* according to your needs.
 
 ## Launch
 
-Launch with `./juice.py deploy` or `./juice.py deploy --db=<db>` with <db> being 'cockroachdb' or 'mariadb' (default)
+Launch with `./juice.py deploy` or `./juice.py deploy --db=<db>` with <db> being 'cockroachdb' (default) or 'mariadb'
 
 ## Help
 
