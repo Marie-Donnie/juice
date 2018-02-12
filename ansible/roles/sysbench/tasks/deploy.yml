@@ -8,7 +8,9 @@
     image: "severalnines/sysbench"
     detach: True
     command: sysbench --db-driver=mysql --table-size=100000 --mysql-host="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}" --mysql-port=3306 --mysql-user=sbtest --mysql-password=sbtest oltp_read_write prepare
-  when: db == 'mariadb'
+  when:
+    - db == 'mariadb'
+    - inventory_hostname == dbmaster_node
 
 - name: Run sysbench on MariaDB
   docker_container:
@@ -16,7 +18,9 @@
     image: "severalnines/sysbench"
     detach: True
     command: sysbench --db-driver=mysql --table-size=100000 --mysql-host="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}" --mysql-port=3306 --mysql-user=sbtest --mysql-password=sbtest oltp_read_write run
-  when: db == 'mariadb'
+  when:
+    - db == 'mariadb'
+    - inventory_hostname == dbmaster_node
 
 
   # CockroachDB
