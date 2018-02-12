@@ -25,7 +25,7 @@ Change *conf.yaml* according to your needs
 
 ## Launch
 
-Launch with `./tasks.py deploy` or `./tasks.py deploy --db=<db>` with <db> being 'cockroachdb' or 'mariadb' (default)
+Launch with `./juice.py deploy` or `./juice.py deploy --db=<db>` with <db> being 'cockroachdb' or 'mariadb' (default)
 
 ## Help
 

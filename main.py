@@ -3,7 +3,7 @@
 import logging
 import sys
 
-import tasks
+import juice
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -13,4 +13,4 @@ if __name__ == "__main__":
         sys.exit(0)
 
     for cmd in sys.argv[1:]:
-        getattr(tasks, cmd)()
+        getattr(juice, cmd)()
