@@ -27,7 +27,6 @@
       - "4444:4444"
     volumes:
       - "/opt/local/etc/mysql.conf.d:/etc/mysql/conf.d"
-      - "/mnt/data:/var/lib/mysql"
     env:
       MYSQL_INITDB_SKIP_TZINFO=yes
       MYSQL_ROOT_PASSWORD=my-secret-pw
@@ -35,6 +34,11 @@
       MYSQL_PASSWORD=sbtest
       MYSQL_DATABASE=sbtest
     command: --wsrep-new-cluster --wsrep_node_address="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}"
+  when: inventory_hostname == dbmaster_node
+
+- wait_for:
+    host: "{{ hostvars[dbmaster_node]['ansible_' + control_network]['ipv4']['address'] }}"
+    port: 3306
   when: inventory_hostname == dbmaster_node
 
 - name: Start the MariaDB container
