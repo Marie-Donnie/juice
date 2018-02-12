@@ -14,7 +14,7 @@ Commands:
     g5k            Claim resources on Grid'5000 (from a frontend)
     inventory      Generate the Ansible inventory file
     prepare        Configure the resources
-    destroy        Destroy all the running dockers (not destroying the resources)
+    destroy        Destroy all the running dockers (not the resources)
     backup         Backup the environment
 """
 
@@ -97,11 +97,14 @@ Generate the Ansible inventory file, requires a g5k execution
 
 @doc()
 @enostask()
-def prepare(env=None, db='cockroachdb', locality='none', **kwargs):
+def prepare(env=None, db='cockroachdb', locality=False, **kwargs):
     """
-usage: juice prepare
+usage: juice prepare [--db {mariadb,cockroachdb}] [--locality]
 
 Configure the resources, requires both g5k and inventory executions
+
+  --db DATABASE         Database to deploy on [default: cockroachdb]
+  --locality            Use follow-the-workload (only for CockroachDB)
     """
     # Generate inventory
     extra_vars = {
@@ -153,7 +156,8 @@ def destroy(env=None, **kwargs):
     """
 usage: juice destroy
 
-Destroy all the running dockers (not destroying the resources), requires g5k and inventory executions
+Destroy all the running dockers (not destroying the resources), requires g5k
+and inventory executions
     """
     extra_vars = {}
     # Call destroy on each component
