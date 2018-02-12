@@ -1,4 +1,7 @@
 ---
+
+# See https://www.cockroachlabs.com/docs/stable/start-a-local-cluster-in-docker.html
+
 - name: Start cockroachdb master
   docker_container:
     name: "cockroachdb-{{ inventory_hostname_short }}"
@@ -25,6 +28,8 @@
   when:
     - inventory_hostname != dbmaster_node
     - not locality
+
+# See https://www.cockroachlabs.com/docs/stable/demo-follow-the-workload.html
 
 - name: Start cockroachdb master with locality
   docker_container:

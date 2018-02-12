@@ -1,4 +1,6 @@
 ---
+# See https://withblue.ink/2016/03/09/galera-cluster-mariadb-coreos-and-docker-part-1.html
+
 - name: Create the directories
   file:
     path: "{{ item }}"
