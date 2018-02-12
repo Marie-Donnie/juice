@@ -26,7 +26,9 @@ Change *conf.yaml* according to your needs.
 ## Launch
 
 Launch with `./juice.py deploy` or `./juice.py deploy --db=<db>` with <db> being 'cockroachdb' (default) or 'mariadb'.
+
 Once it has been launched, you can destroy the containers using `./juice destroy` and then restart them with `./juice prepare --db=<db>`.
+
 If you want to use the [follow-the-workload](https://www.cockroachlabs.com/blog/follow-the-workload/) feature for CockroachDB, you can add `--locality` to your deployment.
 
 ## Help
