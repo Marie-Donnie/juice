@@ -4,7 +4,7 @@
   roles:
     - common
     - registry
-    - telegraf
+    # - telegraf
 
 - name: Apply role chrony
   hosts:
@@ -13,15 +13,15 @@
   roles:
     - chrony
 
-- name: Deploy influx
-  hosts: influxdb
-  roles:
-    - influxdb
+# - name: Deploy influx
+#   hosts: influxdb
+#   roles:
+#     - influxdb
 
-- name: Deploy the grafana
-  hosts: grafana
-  roles:
-    - grafana
+# - name: Deploy the grafana
+#   hosts: grafana
+#   roles:
+#     - grafana
 
 - name: CockroachDB master deployment
   hosts:
