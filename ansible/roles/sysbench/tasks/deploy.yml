@@ -1,12 +1,5 @@
 ---
 
-- name: Waiting for the databases to be ready
-  wait_for:
-    host: "{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}"
-    port: "{{ 26257 if db == 'cockroachdb' else '3306' }}"
-  when: inventory_hostname != dbmaster_node
-
-
   # MariaDB
 
 - name: Prepare sysbench on MariaDB
@@ -60,7 +53,9 @@
     image: "severalnines/sysbench"
     detach: True
     command: sysbench --db-driver=pgsql --pgsql-host="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}" --pgsql-port=26257 --pgsql-user=root --table-size=1000000 oltp_read_write prepare
-  when: db == 'cockroachdb'
+  when:
+    - db == 'cockroachdb'
+    - inventory_hostname == dbmaster_node
 
 - name: Run sysbench on CockroachDB
   docker_container:
@@ -68,4 +63,6 @@
     image: "severalnines/sysbench"
     detach: True
     command: sysbench --db-driver=pgsql --pgsql-host="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}" --pgsql-port=26257 --pgsql-user=root --table-size=1000000 oltp_read_write run
-  when: db == 'cockroachdb'
+  when:
+    - db == 'cockroachdb'
+    - inventory_hostname == dbmaster_node

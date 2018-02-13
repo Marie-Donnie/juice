@@ -61,3 +61,9 @@
       - "/mnt/data:/var/lib/mysql"
     command: --wsrep_node_address="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}"
   when: inventory_hostname != dbmaster_node
+
+
+- name: Waiting for the database to be ready
+  wait_for:
+    host: "{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}"
+    port: 3306
