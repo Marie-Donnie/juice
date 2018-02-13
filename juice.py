@@ -117,7 +117,52 @@ Configure the resources, requires both g5k and inventory executions
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
 
-    run_ansible(["ansible/site.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
+
+@doc()
+@enostask()
+def stress(env=None, db='cockroachdb', locality=False, **kwargs):
+    """
+usage: juice stress [--db {mariadb,cockroachdb}]
+
+Launch sysbench tests
+
+  --db DATABASE         Database to test [default: cockroachdb]
+    """
+    db_validation(db)
+    # Generate inventory
+    extra_vars = {
+        "registry": env["config"]["registry"],
+        "db": db,
+    }
+    env["db"] = db
+    # use deploy of each role
+    extra_vars.update({"enos_action": "deploy"})
+
+    run_ansible(["ansible/stress.yml"], env["inventory"], extra_vars=extra_vars)
+
+
+# @doc()
+# @enostask()
+# def openstack(env=None, db='cockroachdb', locality=False, **kwargs):
+#     """
+# usage: juice openstack [--db {mariadb,cockroachdb}]
+
+# Launch OpenStack
+
+#   --db DATABASE         Database to test [default: cockroachdb]
+#     """
+#     db_validation(db)
+#     # Generate inventory
+#     extra_vars = {
+#         "registry": env["config"]["registry"],
+#         "db": db,
+#     }
+#     env["db"] = db
+#     # use deploy of each role
+#     extra_vars.update({"enos_action": "deploy"})
+
+#     run_ansible(["ansible/openstack.yml"], env["inventory"], extra_vars=extra_vars)
 
 
 @doc()
@@ -148,7 +193,9 @@ Backup the environment, requires g5k, inventory and prepare executions
         "enos_action": "backup",
         "backup_dir": os.path.join(os.getcwd(), "current")
     }
-    run_ansible(["ansible/site.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible(["ansible/stress.yml"], env["inventory"], extra_vars=extra_vars)
+    # run_ansible(["ansible/openstack.yml"], env["inventory"], extra_vars=extra_vars)
 
 
 @doc()
@@ -166,7 +213,9 @@ and inventory executions
         "enos_action": "destroy",
         "db": env["db"]
     })
-    run_ansible(["ansible/site.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible(["ansible/stress.yml"], env["inventory"], extra_vars=extra_vars)
+    # run_ansible(["ansible/openstack.yml"], env["inventory"], extra_vars=extra_vars)
 
 
 if __name__ == '__main__':
