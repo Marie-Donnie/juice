@@ -13,10 +13,10 @@
   roles:
     - chrony
 
-# - name: Deploy influx
-#   hosts: influxdb
-#   roles:
-#     - influxdb
+- name: Deploy influx
+  hosts: influxdb
+  roles:
+    - influxdb
 
 # - name: Deploy the grafana
 #   hosts: grafana
@@ -36,8 +36,3 @@
   roles:
     - { role: mariadb,
         when: db == "mariadb" }
-
-- name: Deploy sysbench
-  hosts: sysbench
-  roles:
-    - sysbench
