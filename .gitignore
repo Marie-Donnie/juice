@@ -109,7 +109,7 @@ current/
 current
 
 # ansible
-site.retry
+*.retry
 
 # lua tests
 tests/
