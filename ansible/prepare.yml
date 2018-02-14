@@ -36,3 +36,11 @@
   roles:
     - { role: mariadb,
         when: db == "mariadb" }
+
+- name: Install monitoring agents
+  hosts: database
+  roles:
+    - { role: cadvisor,
+        when: db == "mariadb" }
+    - { role: collectd,
+        when: db == "mariadb" }

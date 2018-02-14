@@ -14,6 +14,7 @@ Commands:
     g5k            Claim resources on Grid'5000 (from a frontend)
     inventory      Generate the Ansible inventory file
     prepare        Configure the resources
+    stress         Launch sysbench tests (after a deployment)
     destroy        Destroy all the running dockers (not the resources)
     backup         Backup the environment
 """

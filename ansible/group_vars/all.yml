@@ -1,1 +1,4 @@
 dbmaster_node: "{{ groups['database'][0] }}"
+
+cadvisor:
+  housekeeping_interval: 5s
