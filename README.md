@@ -31,6 +31,8 @@ Once it has been launched, you can destroy the containers using `./juice destroy
 
 If you want to use the [follow-the-workload](https://www.cockroachlabs.com/blog/follow-the-workload/) feature for CockroachDB, you can add `--locality` to your deployment.
 
+You can launch sysbench tests afterwards using `./juice stess --db=<db>`.
+
 ## Help
 
 ```
@@ -48,6 +50,7 @@ Commands:
     g5k            Claim resources on Grid'5000 (from a frontend)
     inventory      Generate the Ansible inventory file
     prepare        Configure the resources
-    destroy        Destroy all the running dockers (not destroying the resources)
+    stress         Launch sysbench tests (after a deployment)
+    destroy        Destroy all the running dockers (not the resources)
     backup         Backup the environment
 ```
