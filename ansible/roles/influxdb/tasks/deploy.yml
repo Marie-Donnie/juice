@@ -40,8 +40,8 @@
     delay: 2
     timeout: 120
 
-- name: Create the telegraf database
+- name: Create the cadvisor database
   influxdb_database:
     hostname: "localhost"
-    database_name: "telegraf"
+    database_name: "cadvisor"
     state: present

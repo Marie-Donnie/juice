@@ -1,5 +1,5 @@
 # file generated using ansible
 LoadPlugin network
 <Plugin network>
-  Server "{{ hostvars[dbmaster_node]['ansible_' + control_network]['ipv4']['address'] }}" "25826"
+  Server "{{ hostvars[influxdb_node]['ansible_' + control_network]['ipv4']['address'] }}" "25826"
 </Plugin>

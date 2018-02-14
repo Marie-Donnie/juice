@@ -15,7 +15,7 @@
     delay: 2
     timeout: 120
 
-- name: Add the data sources
+- name: Add the influxdb/collectd data sources
   uri:
     url: "http://localhost:3000/api/datasources"
     user: admin
@@ -30,4 +30,21 @@
     return_content: yes
     status_code: 200,409 # already added
   with_items:
-    - { name: influxdb, database: influxdb, port: 8086, host: "{{ influxdb_host }}" }
+    - { name: influxdb-collectd, database: influxdb, port: 8086, host: "{{ hostvars[influxdb_node]['ansible_' + control_network]['ipv4']['address'] }}" }
+
+- name: Add the influxdb/cadvisor data sources
+  uri:
+    url: "http://localhost:3000/api/datasources"
+    user: admin
+    password: admin
+    force_basic_auth: yes
+    body_format: json
+    method: POST
+    # we workaround this issue :
+    # https://github.com/ansible/ansible-modules-core/issues/265
+    # by adding an empty space at the beginning of the json ...
+    body: " { \"name\": \"{{ item.name }}\", \"type\": \"influxdb\", \"url\": \"http://{{ item.host }}:{{ item.port }}\", \"access\": \"proxy\", \"database\": \"{{ item.database  }}\", \"isDefault\": true }"
+    return_content: yes
+    status_code: 200,409 # already added
+  with_items:
+    - { name: influxdb-cadvisor, database: cadvisor, port: 8086, host: "{{ hostvars[influxdb_node]['ansible_' + control_network]['ipv4']['address'] }}" }

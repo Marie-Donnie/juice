@@ -8,14 +8,21 @@ g5k:
   resources:
     machines:
       - roles:
-          - registry
-          - telegraf
-          - influxdb
-          - grafana
           - database
           - sysbench
+          - chrony
         cluster: grisou
         nodes: 3
+        primary_network: n1
+        secondary_networks: []
+      - roles:
+          - control
+          # - registry
+          # - influxdb
+          # - grafana
+          # - chrony-server
+        cluster: grisou
+        nodes: 1
         primary_network: n1
         secondary_networks: []
     networks:

@@ -16,7 +16,7 @@
 # Note that if Chrony tries to go "online" and dns lookup of the servers
 # fails they will be discarded.  Thus under some circumstances it is
 # better to use IP numbers than host names.
-{% for chrony_server in groups['chrony-server'] %}
+{% for chrony_server in groups['control'] %}
 server {{ hostvars[chrony_server]['ansible_' + control_network]['ipv4']['address']}} iburst minpoll 5
 {% endfor %}
 server 0.debian.pool.ntp.org offline minpoll 8
@@ -61,7 +61,7 @@ dumponexit
 dumpdir /var/lib/chrony
 
 # Let computer be a server when it is unsynchronised.
-{% if inventory_hostname in groups['chrony-server'] %}
+{% if inventory_hostname in groups['control'] %}
 allow all
 # prevent chrony sync from self
 deny {{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}

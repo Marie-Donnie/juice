@@ -3,25 +3,26 @@
   hosts: all
   roles:
     - common
+
+- name: Install registry
+  hosts: control
+  roles :
     - registry
-    # - telegraf
 
 - name: Apply role chrony
-  hosts:
-    - chrony-server
-    - chrony
+  hosts: all
   roles:
     - chrony
 
 - name: Deploy influx
-  hosts: influxdb
+  hosts: control
   roles:
     - influxdb
 
-# - name: Deploy the grafana
-#   hosts: grafana
-#   roles:
-#     - grafana
+- name: Deploy the grafana
+  hosts: control
+  roles:
+    - grafana
 
 - name: CockroachDB master deployment
   hosts:
@@ -40,7 +41,6 @@
 - name: Install monitoring agents
   hosts: database
   roles:
-    - { role: cadvisor,
-        when: db == "mariadb" }
+    - { role: cadvisor }
     - { role: collectd,
         when: db == "mariadb" }

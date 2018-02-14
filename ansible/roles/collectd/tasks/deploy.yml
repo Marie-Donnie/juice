@@ -8,15 +8,6 @@
 - name: Install the configuration file
   copy: src=collectd.conf dest=/etc/collectd/
 
-- name: Install the protocols plugin
-  copy: src=protocols.conf dest=/etc/collectd/collectd.conf.d/
-
-- name: Install the tcpconns plugin
-  copy: src="tcpconns-{{ item }}.conf"
-        dest="/etc/collectd/collectd.conf.d/tcpconns-{{ item }}.conf"
-  with_items:
-    - mariadb
-
 - name: Install the mysql plugin
   template: src=mysql.conf.j2 dest=/etc/collectd/collectd.conf.d/mysql.conf
   when: db == "mariadb"

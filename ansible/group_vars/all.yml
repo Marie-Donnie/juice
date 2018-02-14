@@ -1,4 +1,6 @@
 dbmaster_node: "{{ groups['database'][0] }}"
 
+influxdb_node: "{{ groups['control'][0] }}"
+
 cadvisor:
   housekeeping_interval: 5s

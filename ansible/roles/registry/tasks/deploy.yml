@@ -2,4 +2,4 @@
 - include: "{{ registry.type }}/agent.yml"
 
 - include: "{{ registry.type }}/registry.yml"
-  when: inventory_hostname in groups['registry']
+  when: inventory_hostname in groups['control']

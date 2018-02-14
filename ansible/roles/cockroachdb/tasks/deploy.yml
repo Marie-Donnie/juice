@@ -3,11 +3,11 @@
 # See https://www.cockroachlabs.com/docs/stable/start-a-local-cluster-in-docker.html
 # See https://www.cockroachlabs.com/docs/stable/demo-follow-the-workload.html for locality
 
-- name: Start cockroachdb master
+- name: Start the first cockroachdb node
   docker_container:
     name: "cockroachdb-{{ inventory_hostname_short }}"
     image: "cockroachdb/cockroach"
-    hostname: "{{ inventory_hostname }}"
+    # hostname: "{{ inventory_hostname }}"
     detach: True
     ports:
       - 26257:26257
@@ -16,7 +16,14 @@
   when:
     - inventory_hostname == dbmaster_node
 
-- name: Start cockroachdb slaves
+- name: Waiting for the first database to be ready
+  wait_for:
+    host: "{{ hostvars[dbmaster_node]['ansible_' + control_network]['ipv4']['address'] }}"
+    port: 26257
+  when:
+    - inventory_hostname == dbmaster_node
+
+- name: Start other cockroachdb nodes
   docker_container:
     name: "cockroachdb-{{ inventory_hostname_short }}"
     image: "cockroachdb/cockroach"
@@ -28,7 +35,9 @@
   when:
     - inventory_hostname != dbmaster_node
 
-- name: Waiting for the databases to be ready
+- name: Waiting for databases to be ready
   wait_for:
     host: "{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}"
     port: 26257
+  when:
+    - inventory_hostname != dbmaster_node
