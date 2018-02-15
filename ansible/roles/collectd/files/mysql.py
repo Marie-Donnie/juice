@@ -1,3 +1,4 @@
+# from https://github.com/chrisboulton/collectd-python-mysql
 #!/usr/bin/env python
 # CollectD MySQL plugin, designed for MySQL 5.5+ (specifically Percona Server)
 #
