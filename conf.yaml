@@ -17,7 +17,6 @@ g5k:
         secondary_networks: []
       - roles:
           - control
-          # - registry
           # - influxdb
           # - grafana
           # - chrony-server
