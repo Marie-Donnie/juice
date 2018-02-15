@@ -7,6 +7,8 @@
   with_items:
     - python-setuptools
     - libpq-dev
+    # python-mysql for collectd
+    - python-mysqldb
     # - git
     # - gcc
     # - python-dev
@@ -19,7 +21,8 @@
   pip:
     name: "{{ item }}"
   with_items:
-    - docker
+    # version important because 3.0 doesn't work with current version of enoslib
+    - docker==2.7.0
     - influxdb
     - psycopg2
 

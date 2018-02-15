@@ -3,13 +3,36 @@
   apt: name=collectd state=present
 
 - name: Install the influxdb connector
-  template: src=influx.conf.j2 dest=/etc/collectd/collectd.conf.d/influx.conf
+  template:
+    src: influx.conf.j2
+    dest: /etc/collectd/collectd.conf.d/influx.conf
 
 - name: Install the configuration file
   copy: src=collectd.conf dest=/etc/collectd/
 
 - name: Install the mysql plugin
-  template: src=mysql.conf.j2 dest=/etc/collectd/collectd.conf.d/mysql.conf
+  template:
+    src: mysql.conf.j2
+    dest: /etc/collectd/collectd.conf.d/mysql.conf
+  when: db == "mariadb"
+
+# https://github.com/chrisboulton/collectd-python-mysql
+
+- name: Create the plugin directory
+  file:
+    path: /opt/local/collectd/python/
+    state: directory
+
+- name: Getting python mysql plugin
+  copy:
+    src: mysql.py
+    dest: /opt/local/collectd/python/mysql.py
+  when: db == "mariadb"
+
+- name: Install the python mysql plugin
+  template:
+    src: python-mysql.conf.j2
+    dest: /etc/collectd/collectd.conf.d/python-mysql.conf
   when: db == "mariadb"
 
 - name: Restart collectd

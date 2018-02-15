@@ -2,13 +2,6 @@ LoadPlugin mysql
 
 # https://collectd.org/documentation/manpages/collectd.conf.5.shtml#plugin_mysql
 <Plugin mysql>
-	<Database "node-{{ inventory_hostname_short }}">
-		Host "{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}"
-		Port "3306"
-		User "root"
-		Password "my-secret-pw"
-	</Database>
-	{% if inventory_hostname == dbmaster_node %}
 	<Database galera>
 		Host "{{ hostvars[dbmaster_node]['ansible_' + control_network]['ipv4']['address'] }}"
 		Port "3306"
@@ -16,5 +9,4 @@ LoadPlugin mysql
 		Password "my-secret-pw"
 		WsrepStats true
 	</Database>
-	{% endif %}
 </Plugin>
