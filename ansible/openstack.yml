@@ -1,1 +1,6 @@
 ---
+
+- name: Deploying openstack
+  hosts: openstack
+  roles:
+    - openstack

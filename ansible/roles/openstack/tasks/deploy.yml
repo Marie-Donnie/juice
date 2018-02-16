@@ -1,0 +1,68 @@
+---
+
+- name: Install CockroachDB SQLAlchemy Dialect + Updated version of sqlalchemy-migrate
+  pip:
+    name: "{{item}}"
+    editable: true # Doesn't work (https://github.com/ansible/ansible/issues/8355)
+  with_items:
+    - -e git+https://github.com/cockroachdb/cockroachdb-python.git#egg=cockroachdb
+    - -e git+https://github.com/rcherrueau/sqlalchemy-migrate.git@cockroachdb/pike#egg=sqlalchemy-migrate
+
+- name: Add stack user
+  user:
+    name: stack
+    shell: /bin/bash
+    home: /opt/stack
+    system: yes
+
+- name: Make stack user a sudoer
+  lineinfile:
+    dest: /etc/sudoers.d/stack
+    line: "stack ALL=(ALL) NOPASSWD: ALL"
+    create: yes
+
+- name: Clone Devstack in /opt/stack/devstack
+  git:
+    repo: https://git.openstack.org/openstack-dev/devstack
+    version: stable/pike
+    dest: /opt/stack/devstack
+    force: yes
+    update: no
+    depth: 1
+
+# - name: Patching devstack (host-ip)
+#   shell: "sed -i 's/HOST_IP=${HOST_IP:-}/ HOST_IP=10.0.2.15/' /opt/stack/devstack/stackrc"
+#   become: true
+#   become_user: stack
+
+- name: Patching devstack (Add support to cockroachdb database)
+  template:
+    src: lib-cockroachdb.j2
+    dest: /opt/stack/devstack/lib/databases/cockroachdb
+    owner: stack
+
+- name: Create the devstack local.conf
+  template:
+    src: local.conf.j2
+    dest: /opt/stack/devstack/local.conf
+    owner: stack
+
+- name: Clear Devstack
+  shell: /opt/stack/devstack/unstack.sh &> /tmp/stack-logs2
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: stack
+
+- name: Start of Devstack deployment
+  debug:
+    msg:
+      - "Follow deployment with:"
+      - "ssh -l root {{ inventory_hostname }} -- tail -f /tmp/stack-logs"
+
+- name: Run Devstack
+  shell: /opt/stack/devstack/stack.sh &> /tmp/stack-logs2
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: stack

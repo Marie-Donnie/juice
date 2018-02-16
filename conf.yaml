@@ -8,9 +8,10 @@ g5k:
   resources:
     machines:
       - roles:
+          - chrony
           - database
           - sysbench
-          - chrony
+          - openstack
         cluster: grisou
         nodes: 3
         primary_network: n1

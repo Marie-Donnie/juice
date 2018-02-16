@@ -1,0 +1,46 @@
+[[local|localrc]]
+REGION_NAME="{{ inventory_hostname_short }}"
+KEYSTONE_REGION_NAME="${REGION_NAME}"
+HOST_IP="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}"
+ADMIN_PASSWORD=admin
+DATABASE_HOST="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}"
+DATABASE_USER=root
+DATABASE_PASSWORD=my-secret-pw
+RABBIT_PASSWORD=admin
+SERVICE_PASSWORD=admin
+LIBVIRT_TYPE=kvm
+WSGI_MODE=uwsgi
+LIBS_FROM_GIT=oslo.db
+OSLODB_REPO=https://github.com/BeyondTheClouds/oslo.db
+OSLODB_BRANCH=cockroachdb/pike
+KEYSTONE_REPO=https://github.com/BeyondTheClouds/keystone
+KEYSTONE_BRANCH=cockroachdb/pike
+# Note: Find services in $ENABLED_SERVICES
+disable_service c-api
+disable_service c-sch
+disable_service c-vol
+disable_service dstat
+disable_service etcd3
+disable_service g-api
+disable_service g-reg
+disable_service horizon
+disable_service n-api-meta
+disable_service n-api
+disable_service n-cauth
+disable_service n-cond
+disable_service n-cond-cell1
+disable_service n-cpu
+disable_service n-novnc
+disable_service n-sch
+disable_service n-super-cond
+disable_service placement-api
+disable_service placement-client
+disable_service q-agt
+disable_service q-dhcp
+disable_service q-l3
+disable_service q-meta
+disable_service q-svc
+disable_service tempest
+disable_service mysql
+# enable_service postgresql
+enable_service cockroachdb
