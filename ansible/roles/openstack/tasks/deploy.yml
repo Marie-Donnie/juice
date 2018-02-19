@@ -1,5 +1,16 @@
 ---
 
+- name: Removes keystone database if present
+  postgresql_db:
+    name: keystone
+    login_host: "{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}"
+    login_user: root
+    port: 26257
+    state: absent
+  when:
+    - db == 'cockroachdb'
+    - inventory_hostname == dbmaster_node
+
 - name: Install CockroachDB SQLAlchemy Dialect + Updated version of sqlalchemy-migrate
   pip:
     name: "{{item}}"
@@ -29,6 +40,8 @@
     force: yes
     update: no
     depth: 1
+  become: true
+  become_user: stack
 
 # - name: Patching devstack (host-ip)
 #   shell: "sed -i 's/HOST_IP=${HOST_IP:-}/ HOST_IP=10.0.2.15/' /opt/stack/devstack/stackrc"
@@ -40,19 +53,28 @@
     src: lib-cockroachdb.j2
     dest: /opt/stack/devstack/lib/databases/cockroachdb
     owner: stack
+  become: true
+  become_user: stack
 
 - name: Create the devstack local.conf
   template:
     src: local.conf.j2
     dest: /opt/stack/devstack/local.conf
     owner: stack
+  become: true
+  become_user: stack
 
 - name: Clear Devstack
-  shell: /opt/stack/devstack/unstack.sh &> /tmp/stack-logs2
+  shell: /opt/stack/devstack/unstack.sh &> /tmp/stack-logs
   args:
     executable: /bin/bash
   become: true
   become_user: stack
+
+- name: Get MySQL sources
+  get_url:
+    url: "https://repo.mysql.com/mysql-apt-config_0.8.9-1_all.deb"
+    dest: /tmp/my-sql-apt-config.deb
 
 - name: Start of Devstack deployment
   debug:
@@ -61,7 +83,7 @@
       - "ssh -l root {{ inventory_hostname }} -- tail -f /tmp/stack-logs"
 
 - name: Run Devstack
-  shell: /opt/stack/devstack/stack.sh &> /tmp/stack-logs2
+  shell: /opt/stack/devstack/stack.sh &> /tmp/stack-logs
   args:
     executable: /bin/bash
   become: true
