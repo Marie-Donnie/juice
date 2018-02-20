@@ -12,6 +12,7 @@ g5k:
           - database
           - sysbench
           - openstack
+          - rally
         cluster: grisou
         nodes: 3
         primary_network: n1

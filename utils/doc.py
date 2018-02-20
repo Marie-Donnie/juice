@@ -12,6 +12,8 @@ def doc():
             for k, v in kwargs.items():
                 if k.startswith('--'):
                     kwargs[k.lstrip('--')] = v
+                elif k.startswith('-'):
+                    kwargs[k.lstrip('-')] = v
             # Proceeds with the function execution
             fn(*args, **kwargs)
         DOC_GLOBAL[fn.__name__] = decorated

@@ -27,7 +27,7 @@ disable_service horizon
 disable_service n-api-meta
 disable_service n-api
 disable_service n-cauth
-# disable_service n-cond
+disable_service n-cond
 disable_service n-cond-cell1
 disable_service n-cpu
 disable_service n-novnc
@@ -44,9 +44,9 @@ disable_service tempest
 disable_service mysql
 # enable_service postgresql
 enable_service cockroachdb
-enable_plugin rally https://github.com/openstack/rally master
+# enable_plugin rally https://github.com/openstack/rally master
 
 
-[[extra|/etc/rally/rally.conf]]
-[database]
-connection = sqlite:////etc/rally/.rally.sqlite
+# [[extra|/etc/rally/rally.conf]]
+# [database]
+# connection = sqlite:////etc/rally/.rally.sqlite

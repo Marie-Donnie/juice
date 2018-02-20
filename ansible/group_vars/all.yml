@@ -4,3 +4,18 @@ influxdb_node: "{{ groups['control'][0] }}"
 
 cadvisor:
   housekeeping_interval: 5s
+
+
+# default openstack env
+os_env:
+  OS_USER_DOMAIN_ID: default
+  OS_AUTH_URL: "http://{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}/identity"
+  OS_PROJECT_DOMAIN_ID: default
+  OS_REGION_NAME: "{{ inventory_hostname_short }}"
+  OS_PROJECT_NAME: admin
+  OS_IDENTITY_API_VERSION: 3
+  OS_TENANT_NAME: admin
+  OS_AUTH_TYPE: password
+  OS_PASSWORD: admin
+  OS_USERNAME: admin
+  OS_VOLUME_API_VERSION: 2

@@ -1,0 +1,6 @@
+---
+
+- name: Using rally
+  hosts: rally
+  roles:
+    - rally

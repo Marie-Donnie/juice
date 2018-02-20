@@ -15,6 +15,7 @@ Commands:
     inventory      Generate the Ansible inventory file
     prepare        Configure the resources
     stress         Launch sysbench tests (after a deployment)
+    openstack      Add OpenStack Keystone to the deployment
     destroy        Destroy all the running dockers (not the resources)
     backup         Backup the environment
 """
@@ -137,7 +138,6 @@ Launch sysbench tests
         "registry": env["config"]["registry"],
         "db": db,
     }
-    env["db"] = db
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
 
@@ -160,11 +160,41 @@ Launch OpenStack
         "registry": env["config"]["registry"],
         "db": db,
     }
-    env["db"] = db
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
 
     run_ansible(["ansible/openstack.yml"], env["inventory"], extra_vars=extra_vars)
+
+
+@doc()
+@enostask()
+def rally(db, files, folder, env=None, **kwargs):
+    """
+usage: juice rally [--db {mariadb,cockroachdb}] [--files FILE... | --folder DIRECTORY]
+
+Benchmark the Openstack
+
+  --db DATABASE         Database to test [default: cockroachdb]
+  --files FILE          Files to use for rally scenarios (name must be a relative path from rally folder).
+  --folder DIRECTORY    Directory that contains rally scenarios. [default: keystone]
+    """
+    db_validation(db)
+    logging.info("Launching rally using scenarios : %s" % ( ', '.join(files)))
+    logging.info("Launching rally using all scenarios in %s directory.", folder)
+    # Generate inventory
+    extra_vars = {
+        "registry": env["config"]["registry"],
+        "db": db,
+    }
+    if files:
+        extra_vars.update({"rally_files": files})
+    else:
+        extra_vars.update({"rally_directory": folder})
+
+    # use deploy of each role
+    extra_vars.update({"enos_action": "deploy"})
+
+    run_ansible(["ansible/rally.yml"], env["inventory"], extra_vars=extra_vars)
 
 
 @doc()
