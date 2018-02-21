@@ -1,15 +1,24 @@
 ---
 
 # ---------------------------------------------- Setup rally
-- name: Install rally result directory
-  file: path=/root/rally_home state=directory owner=65500
+- name: Create rally result directory
+  file:
+    path: "/root/rally_home"
+    state: directory
+    owner: 65500
+  when:
+    - inventory_hostname == dbmaster_node
 
 - name: Test whether the rally database has been initialized
   stat: path=/root/rally_home/rally.db
   register: sqlite
+  when:
+    - inventory_hostname == dbmaster_node
 
 - name: Initialize database
-  when: not sqlite.stat.exists
+  when:
+    - inventory_hostname == dbmaster_node
+    - not sqlite.stat.exists
   command: >
     docker run -v /root/rally_home:/home/rally/data xrally/xrally-openstack
            db create
@@ -25,9 +34,13 @@
     docker run -v /root/rally_home:/home/rally/data xrally/xrally-openstack
            deployment list
   register: deployment
+  when:
+    - inventory_hostname == dbmaster_node
 
 - name: Deploy discovery context
-  when: "'discovery' not in deployment.stdout"
+  when:
+    - inventory_hostname == dbmaster_node
+    - "'discovery' not in deployment.stdout"
   docker_container:
     name: "rally-{{ inventory_hostname_short }}"
     image: "xrally/xrally-openstack"
@@ -39,27 +52,61 @@
 
 # ----------------------------------- Setup & run rally test
 
+# When separate files have been given
+# - name: Ensure target directory exists
+#   file:
+#     dest: "/home/rally/source/samples/tasks/scenarios/{{ item }}"
+#     state: file
+#   with_items: "{{ rally_files }}"
+#   when:
+#     - inventory_hostname == dbmaster_node
+#     - rally_files is defined
 
 - name: Run scenarios
   command: >
-    docker run -v /root/rally_home:/home/rally/data xrally/xrally-openstack
+    docker run -v /root/rally_home:/home/rally/data --name {{ item }} xrally/xrally-openstack
            task start /home/rally/source/samples/tasks/scenarios/{{ item }}
            --deployment discovery
   with_items: "{{ rally_files }}"
-  when: rally_files
+  when:
+    - inventory_hostname == dbmaster_node
+    - rally_files is defined
+
+# When a whole directory was given
+# - name: Ensure target directory exists
+#   file:
+#     dest: "/home/rally/source/samples/tasks/scenarios/{{ rally_directory }}"
+#     state: directory
+#   when:
+#     - inventory_hostname == dbmaster_node
+#     - rally_files is not defined
+#     - rally_directory is defined
+
+- name: Getting files to execute
+  command: >
+    docker run --entrypoint=bash xrally/xrally-openstack -c "ls -Rp /home/rally/source/samples/tasks/scenarios/{{ rally_directory }} | grep -v / | grep yaml"
+  register: scenarios
+  when:
+    - inventory_hostname == dbmaster_node
+    - rally_files is not defined
+    - rally_directory is defined
 
 - name: Run scenarios
   command: >
-    docker run -v /root/rally_home:/home/rally/data xrally/xrally-openstack
-           task start /home/rally/source/samples/tasks/scenarios/{{ item }}
-           --deployment discovery
-  with_items: "{{ rally_files }}"
-  when: not rally_files
+    docker run -v /root/rally_home:/home/rally/data --name {{ item }} xrally/xrally-openstack
+    task start /home/rally/source/samples/tasks/scenarios/{{ rally_directory }}/{{ item }}
+    --deployment discovery
+  with_items: "{{ scenarios.stdout_lines }}"
+  failed_when: False
+  when:
+    - inventory_hostname == dbmaster_node
+    - rally_files is not defined
+    - rally_directory is defined
 
 # -------------------------------- Download results (if any)
 # - name: Find report identifier
 #   shell: >
-#     docker run -v /root/rally_home:/home/rally/data {{ rally_container_image }}\
+#     docker run -v /root/rally_home:/home/rally/data xrally/xrally-openstack\
 #            task list --uuids-only\
 #            --deployment discovery\
 #           | tail -n 1
@@ -68,15 +115,15 @@
 # - name: Generating rally reports (html) for {{ task_uuid.stdout }}
 #   when: task_uuid.stdout != ""
 #   command: >
-#     docker run -v /root/rally_home:/home/rally/data {{ rally_container_image }}
+#     docker run -v /root/rally_home:/home/rally/data xrally/xrally-openstack
 #            task report --uuid {{ task_uuid.stdout }}
 #            --html-static --out
-#            /home/rally/data/report-{{ bench.scenario_location | basename }}-{{ task_uuid.stdout }}.html
+#            /home/rally/data/report-{{ task_uuid.stdout }}.html
 
 # - name: Generating rally reports (json) for {{ task_uuid.stdout }}
 #   when: task_uuid.stdout != ""
 #   command: >
-#     docker run -v /root/rally_home:/home/rally/data {{ rally_container_image }}
+#     docker run -v /root/rally_home:/home/rally/data xrally/xrally-openstack
 #            task report --uuid {{ task_uuid.stdout }}
 #            --json --out
-#            /home/rally/data/report-{{ bench.scenario_location | basename }}-{{ task_uuid.stdout }}.json
+#            /home/rally/data/report-{{ task_uuid.stdout }}.json
