@@ -48,9 +48,14 @@ Options:
 Commands:
     deploy         Claim resources from g5k and configure them
     g5k            Claim resources on Grid'5000 (from a frontend)
+    info           Show information of the actual deployment
     inventory      Generate the Ansible inventory file
     prepare        Configure the resources
     stress         Launch sysbench tests (after a deployment)
-    destroy        Destroy all the running dockers (not the resources)
+    openstack      Add OpenStack Keystone to the deployment
+    rally          Benchmark the Openstack
     backup         Backup the environment
+    destroy        Destroy all the running dockers (not the resources)
+
+Run 'juice COMMAND --help' for more information on a command
 ```

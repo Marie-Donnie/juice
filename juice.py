@@ -17,6 +17,7 @@ Commands:
     prepare        Configure the resources
     stress         Launch sysbench tests (after a deployment)
     openstack      Add OpenStack Keystone to the deployment
+    rally          Benchmark the Openstack
     backup         Backup the environment
     destroy        Destroy all the running dockers (not the resources)
 
