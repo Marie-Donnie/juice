@@ -25,7 +25,7 @@ Change *conf.yaml* according to your needs.
 
 ## Launch
 
-Launch with `./juice.py deploy` or `./juice.py deploy --db=<db>` with <db> being 'cockroachdb' (default) or 'mariadb'.
+Launch with `./juice.py deploy` or `./juice.py deploy --db=<db>` with db being 'cockroachdb' (default) or 'mariadb'.
 
 Once it has been launched, you can destroy the containers using `./juice destroy` and then restart them with `./juice prepare --db=<db>`.
 
@@ -59,7 +59,7 @@ To monitor activity on your databases:
 4. There are several dashboard you can import for cadvisor and collectd:
    * [Service - MySQL InnoDB Metrics](https://grafana.com/dashboards/564) provides performance metrics about MariaDB Innodb engine
    * [Service - MySQL Metrics](https://grafana.com/dashboards/561) provides performance metrics for MariaDB
-   * For cadvisor, you have to make your own dashboards using whatever metrics you need because the one made for cAdvisor/InfluxDB does not work with Juice
+   * For cAdvisor, you have to make your own dashboards using whatever metrics you need because the one made for cAdvisor/InfluxDB does not work with Juice
 
 ### Backup
 
