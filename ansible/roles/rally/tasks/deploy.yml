@@ -53,6 +53,13 @@
 # ----------------------------------- Setup & run rally test
 
 # When --file was used
+- name: Specify the scenarios which will be used
+  debug:
+    msg: "Launching following scenarios: {{ rally_files }}"
+  when:
+    - inventory_hostname == dbmaster_node
+    - rally_files is defined
+
 - name: Run scenarios {{ rally_files | default(none) }}
   command: >
     docker run -v /root/rally_home:/home/rally/data --name {{ item | regex_replace("/", "-") }} xrally/xrally-openstack
@@ -70,6 +77,14 @@
   command: >
     docker run --entrypoint=bash xrally/xrally-openstack -c "ls -Rp /home/rally/source/samples/tasks/scenarios/{{ rally_directory }} | grep -v / | grep yaml"
   register: scenarios
+  when:
+    - inventory_hostname == dbmaster_node
+    - rally_files is not defined
+    - rally_directory is defined
+
+- name: Specify the scenarios which will be used
+  debug:
+    msg: "Launching following scenarios: {{ scenarios.stdout_lines }}"
   when:
     - inventory_hostname == dbmaster_node
     - rally_files is not defined
