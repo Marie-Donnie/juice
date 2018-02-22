@@ -179,19 +179,19 @@ Launch OpenStack
 
 @doc()
 @enostask()
-def rally(db, files, folder, env=None, **kwargs):
+def rally(db, files, directory, env=None, **kwargs):
     """
-usage: juice rally [--db {mariadb,cockroachdb}] [--files FILE... | --folder DIRECTORY]
+usage: juice rally [--db {mariadb,cockroachdb}] [--files FILE... | --directory DIRECTORY]
 
 Benchmark the Openstack
 
   --db DATABASE         Database to test [default: cockroachdb]
   --files FILE          Files to use for rally scenarios (name must be a path from rally scenarios folder).
-  --folder DIRECTORY    Directory that contains rally scenarios. [default: keystone]
+  --directory DIRECTORY    Directory that contains rally scenarios. [default: keystone]
     """
     db_validation(db)
     logging.info("Launching rally using scenarios : %s" % ( ', '.join(files)))
-    logging.info("Launching rally using all scenarios in %s directory.", folder)
+    logging.info("Launching rally using all scenarios in %s directory.", directory)
     # Generate inventory
     extra_vars = {
         "registry": env["config"]["registry"],
@@ -200,7 +200,7 @@ Benchmark the Openstack
     if files:
         extra_vars.update({"rally_files": files})
     else:
-        extra_vars.update({"rally_directory": folder})
+        extra_vars.update({"rally_directory": directory})
 
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
@@ -225,7 +225,6 @@ def validate(env=None, **kwargs):
 
 
 @doc(SYMLINK_NAME)
-# @docstring_parameter()
 @enostask()
 def info(env, out, **kwargs):
     """
@@ -240,7 +239,6 @@ Options:
   --out FORMAT             Output the result in either json, pickle or
                            yaml format.
     """
-
     if not out:
         pprint.pprint(env)
     elif out == 'json':
