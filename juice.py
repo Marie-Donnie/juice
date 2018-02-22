@@ -19,6 +19,8 @@ Commands:
     openstack      Add OpenStack Keystone to the deployment
     backup         Backup the environment
     destroy        Destroy all the running dockers (not the resources)
+
+Run 'juice COMMAND --help' for more information on a command
 """
 
 import os
