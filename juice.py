@@ -12,12 +12,13 @@ Options:
 Commands:
     deploy         Claim resources from g5k and configure them
     g5k            Claim resources on Grid'5000 (from a frontend)
+    info           Show information of the actual deployment
     inventory      Generate the Ansible inventory file
     prepare        Configure the resources
     stress         Launch sysbench tests (after a deployment)
     openstack      Add OpenStack Keystone to the deployment
-    destroy        Destroy all the running dockers (not the resources)
     backup         Backup the environment
+    destroy        Destroy all the running dockers (not the resources)
 """
 
 import os
@@ -25,6 +26,11 @@ import logging
 import yaml
 
 from docopt import docopt
+import pprint
+import json
+import operator
+import pickle
+import yaml
 from enoslib.api import (run_ansible, generate_inventory,
                          emulate_network, validate_network)
 from enoslib.task import enostask
@@ -36,6 +42,8 @@ logging.basicConfig(level=logging.DEBUG)
 
 DEFAULT_CONF = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_CONF = os.path.join(DEFAULT_CONF, "conf.yaml")
+
+SYMLINK_NAME = os.path.abspath(os.path.join(os.getcwd(), 'current'))
 
 tc = {
     "enable": True,
@@ -211,6 +219,36 @@ def validate(env=None, **kwargs):
     inventory = env["inventory"]
     roles = env["roles"]
     validate_network(roles, inventory)
+
+
+@doc(SYMLINK_NAME)
+# @docstring_parameter()
+@enostask()
+def info(env, out, **kwargs):
+    """
+usage: enos info [-e ENV|--env=ENV] [--out=FORMAT]
+
+Show information of the `ENV` deployment.
+
+Options:
+  -e ENV --env=ENV         Path to the environment directory. You should use
+                           this option when you want to link a
+                           specific experiment [default: {0}].
+  --out FORMAT             Output the result in either json, pickle or
+                           yaml format.
+    """
+
+    if not out:
+        pprint.pprint(env)
+    elif out == 'json':
+        print json.dumps(env, default=operator.attrgetter('__dict__'))
+    elif out == 'pickle':
+        print pickle.dumps(env)
+    elif out == 'yaml':
+        print yaml.dump(env)
+    else:
+        print("--out doesn't suppport %s output format" % out)
+        print(info.__doc__)
 
 
 @doc()

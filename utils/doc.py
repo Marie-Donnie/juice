@@ -4,7 +4,7 @@ from docopt import docopt
 DOC_GLOBAL = {}
 
 
-def doc():
+def doc(doc_param=None):
     def decorator(fn):
         @wraps(fn)
         def decorated(*args, **kwargs):
@@ -17,6 +17,9 @@ def doc():
             # Proceeds with the function execution
             fn(*args, **kwargs)
         DOC_GLOBAL[fn.__name__] = decorated
+        # https://stackoverflow.com/questions/10307696/how-to-put-a-variable-into-python-docstring
+        if doc_param:
+            decorated.__doc__ = decorated.__doc__.format(doc_param)
         return decorated
     return decorator
 
