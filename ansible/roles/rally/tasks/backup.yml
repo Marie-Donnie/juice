@@ -1,1 +1,13 @@
 ---
+
+- name: Tar the data directory
+  archive:
+    path:
+      - /root/rally_home
+    dest: /rally.tar.gz
+
+- name: Fetch rally data
+  fetch:
+    src: /rally.tar.gz
+    dest: "{{ backup_dir }}/rally.tar.gz"
+    flat: yes

@@ -186,7 +186,7 @@ usage: juice rally [--db {mariadb,cockroachdb}] [--files FILE... | --folder DIRE
 Benchmark the Openstack
 
   --db DATABASE         Database to test [default: cockroachdb]
-  --files FILE          Files to use for rally scenarios (name must be a relative path from rally folder).
+  --files FILE          Files to use for rally scenarios (name must be a path from rally scenarios folder).
   --folder DIRECTORY    Directory that contains rally scenarios. [default: keystone]
     """
     db_validation(db)
@@ -264,7 +264,7 @@ Backup the environment, requires g5k, inventory and prepare executions
     """
     extra_vars = {
         "enos_action": "backup",
-        "backup_dir": os.path.join(os.getcwd(), "current")
+        "backup_dir": os.path.join(os.getcwd(), "current/backup")
     }
     run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
     run_ansible(["ansible/stress.yml"], env["inventory"], extra_vars=extra_vars)
