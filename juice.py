@@ -92,6 +92,7 @@ Claim resources on Grid'5000 (from a frontend)
     env["config"] = config
     env["roles"] = roles
     env["networks"] = networks
+    env["tasks_ran"] = ['g5k']
 
 
 @doc()
@@ -106,6 +107,7 @@ Generate the Ansible inventory file, requires a g5k execution
     networks = env["networks"]
     env["inventory"] = os.path.join(env["resultdir"], "hosts")
     generate_inventory(roles, networks, env["inventory"], check_networks=True)
+    env["tasks_ran"].append('inventory')
 
 
 @doc()
@@ -129,8 +131,8 @@ Configure the resources, requires both g5k and inventory executions
     env["db"] = db
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
-
     run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
+    env["tasks_ran"].append('prepare')
 
 
 @doc()
@@ -151,8 +153,8 @@ Launch sysbench tests
     }
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
-
     run_ansible(["ansible/stress.yml"], env["inventory"], extra_vars=extra_vars)
+    env["tasks_ran"].append('stress')
 
 
 @doc()
@@ -173,8 +175,8 @@ Launch OpenStack
     }
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
-
     run_ansible(["ansible/openstack.yml"], env["inventory"], extra_vars=extra_vars)
+    env["tasks_ran"].append('openstack')
 
 
 @doc()
@@ -204,8 +206,8 @@ Benchmark the Openstack
 
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
-
     run_ansible(["ansible/rally.yml"], env["inventory"], extra_vars=extra_vars)
+    env["tasks_ran"].append('rally')
 
 
 @doc()
@@ -214,6 +216,7 @@ def emulate(env=None, **kwargs):
     inventory = env["inventory"]
     roles = env["roles"]
     emulate_network(roles, inventory, tc)
+    env["tasks_ran"].append('emulate')
 
 
 @doc()
@@ -222,6 +225,7 @@ def validate(env=None, **kwargs):
     inventory = env["inventory"]
     roles = env["roles"]
     validate_network(roles, inventory)
+    env["tasks_ran"].append('validate')
 
 
 @doc(SYMLINK_NAME)
@@ -262,11 +266,14 @@ Backup the environment, requires g5k, inventory and prepare executions
     """
     extra_vars = {
         "enos_action": "backup",
-        "backup_dir": os.path.join(os.getcwd(), "current/backup")
+        "backup_dir": os.path.join(os.getcwd(), "current/backup"),
+        "tasks_ran" : env["tasks_ran"],
     }
     run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
     run_ansible(["ansible/stress.yml"], env["inventory"], extra_vars=extra_vars)
-    # run_ansible(["ansible/openstack.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible(["ansible/openstack.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible(["ansible/rally.yml"], env["inventory"], extra_vars=extra_vars)
+    env["tasks_ran"].append('backup')
 
 
 @doc()
@@ -282,11 +289,14 @@ and inventory executions
     # Call destroy on each component
     extra_vars.update({
         "enos_action": "destroy",
-        "db": env["db"]
+        "db": env["db"],
+        "tasks_ran" : env["tasks_ran"],
     })
     run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
     run_ansible(["ansible/stress.yml"], env["inventory"], extra_vars=extra_vars)
-    # run_ansible(["ansible/openstack.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible(["ansible/openstack.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible(["ansible/rally.yml"], env["inventory"], extra_vars=extra_vars)
+    env["tasks_ran"].append('destroy')
 
 
 if __name__ == '__main__':

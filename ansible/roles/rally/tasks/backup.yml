@@ -5,9 +5,15 @@
     path:
       - /root/rally_home
     dest: /rally.tar.gz
+  when:
+    - inventory_hostname == dbmaster_node
+    - '"rally" in tasks_ran'
 
 - name: Fetch rally data
   fetch:
     src: /rally.tar.gz
     dest: "{{ backup_dir }}/rally.tar.gz"
     flat: yes
+  when:
+    - inventory_hostname == dbmaster_node
+    - '"rally" in tasks_ran'
