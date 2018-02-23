@@ -54,7 +54,7 @@ function recreate_database_cockroachdb {
 		    break
 		else
 		    echo "Waiting for migrations to finish"
-		    sleep $(( ( RANDOM % 20 )  + 50 ))
+		    sleep $(( ( RANDOM % 30 )  + 60 ))
 		fi
 	    else
 		echo "Waiting for migrations"
