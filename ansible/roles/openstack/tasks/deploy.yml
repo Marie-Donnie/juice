@@ -76,6 +76,9 @@
     url: "https://repo.mysql.com/mysql-apt-config_0.8.9-1_all.deb"
     dest: /tmp/my-sql-apt-config.deb
 
+- name: Install MySQL sources
+  shell: DEBIAN_FRONTEND=noninteractive dpkg -i /tmp/my-sql-apt-config.deb
+
 - name: Start of Devstack deployment
   debug:
     msg:
