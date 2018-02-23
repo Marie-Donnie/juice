@@ -2,33 +2,39 @@
 - name: Common configuration
   hosts: all
   roles:
-    - common
+    - { role: common,
+        tags: common }
 
 - name: Install registry
   hosts: all
   roles :
-    - registry
+    - { role: registry,
+        tags: registry }
 
 - name: Apply role chrony
   hosts: all
   roles:
-    - chrony
+    - { role: chrony,
+        tags: chrony }
 
-- name: Deploy influx
+- name: Deploy influxdb
   hosts: control
   roles:
-    - influxdb
+    - { role: influxdb,
+        tags: influxdb }
 
 - name: Deploy the grafana
   hosts: control
   roles:
-    - grafana
+    - { role: grafana,
+        tags: grafana }
 
 - name: CockroachDB master deployment
   hosts:
     - database
   roles:
     - { role: cockroachdb,
+        tags: cockroachdb,
         when: db == "cockroachdb" }
 
 - name: MariaDB master deployment
@@ -36,11 +42,14 @@
     - database
   roles:
     - { role: mariadb,
+        tags: mariadb,
         when: db == "mariadb" }
 
 - name: Install monitoring agents
   hosts: database
   roles:
-    - { role: cadvisor }
+    - { role: cadvisor,
+        tags: cadvisor }
     - { role: collectd,
+        tags: collectd,
         when: db == "mariadb" }

@@ -2,4 +2,5 @@
 - name: Deploy sysbench
   hosts: sysbench
   roles:
-    - sysbench
+    - { role: sysbench,
+        tags: stress }

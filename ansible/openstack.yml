@@ -3,4 +3,5 @@
 - name: Deploying openstack
   hosts: openstack
   roles:
-    - openstack
+    - { role: openstack,
+        tags: openstack }
