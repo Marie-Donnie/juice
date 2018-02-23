@@ -1,0 +1,106 @@
+#!/bin/bash
+#
+# lib/databases/mysql
+# Functions to control the configuration and operation of the **MySQL** database backend
+
+# Dependencies:
+#
+# - DATABASE_{HOST,USER,PASSWORD} must be defined
+
+# Save trace setting
+_XTRACE_DB_MYSQL=$(set +o | grep xtrace)
+set +o xtrace
+
+MYSQL_DRIVER=${MYSQL_DRIVER:-PyMySQL}
+
+register_database galera
+
+DATABASE_USER=root
+DATABASE_PASSWORD=my-secret-pw
+
+# Functions
+# ---------
+
+function get_database_type_galera {
+    echo mysql
+}
+
+# Get rid of everything enough to cleanly change database backends
+function cleanup_database_galera {
+    # Handled by galera/tasks/destroy.yml
+    return
+}
+
+function recreate_database_galera {
+    local db=$1
+    {% if inventory_hostname == dbmaster_node %}
+    sudo docker exec -i mariadb-{{ inventory_hostname_short }} mysql -u$DATABASE_USER -p$DATABASE_PASSWORD -e "DROP DATABASE IF EXISTS $db;"
+    sudo docker exec -i mariadb-{{ inventory_hostname_short }} mysql -u$DATABASE_USER -p$DATABASE_PASSWORD -e "CREATE DATABASE $db CHARACTER SET utf8;"
+    {% else %}
+    while true
+    do
+        if [[ $(sudo docker exec -i mariadb-{{ inventory_hostname_short }} \
+		      mysql -u$DATABASE_USER -p$DATABASE_PASSWORD \
+		      -e "show databases like 'keystone'" | \
+			fgrep "Database (keystone)") == "Database (keystone)" ]]
+        then
+	    if [[ $(sudo docker exec -i mariadb-{{ inventory_hostname_short }} \
+			 mysql -u$DATABASE_USER -p$DATABASE_PASSWORD \
+			 -e "SHOW TABLES FROM keystone" | grep 'migrate_version') == 'migrate_version' ]]
+	    then
+		# waiting for the 24th migrations of keystone contract which is supposed to be the last
+		if [[ $(sudo docker exec -i mariadb-{{ inventory_hostname_short }} \
+			     mysql -u$DATABASE_USER -p$DATABASE_PASSWORD -e \
+			     "select version from keystone.migrate_version where repository_id = 'keystone_contract'" | fgrep "24") == "24" ]]
+		then
+		    break
+		else
+		    echo "Waiting for migrations to finish"
+		    sleep $(( ( RANDOM % 30 )  + 60 ))
+		fi
+	    else
+		echo "Waiting for migrations"
+		sleep 5
+	    fi
+	else
+	    echo "Waiting for database $db to be up"
+	    sleep 5
+	fi
+    done
+    {% endif %}
+    return
+}
+
+function configure_database_galera {
+    # Handled by galera/tasks/deploy.yml
+    return
+}
+
+function install_database_galera {
+    # Handled by cockroachdb/tasks/deploy.yml
+    return
+}
+
+function install_database_python_galera {
+    # Install Python client module
+    pip_install_gr $MYSQL_DRIVER
+    if [[ "$MYSQL_DRIVER" == "MySQL-python" ]]; then
+        ADDITIONAL_VENV_PACKAGES+=",MySQL-python"
+    elif [[ "$MYSQL_DRIVER" == "PyMySQL" ]]; then
+        ADDITIONAL_VENV_PACKAGES+=",PyMySQL"
+    fi
+    return
+}
+
+function database_connection_url_galera {
+    local db=$1
+    echo "$BASE_SQL_CONN:3306/$db?charset=utf8"
+}
+
+
+# Restore xtrace
+$_XTRACE_DB_MYSQL
+
+# Local variables:
+# mode: shell-script
+# End:

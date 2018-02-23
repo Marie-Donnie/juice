@@ -42,11 +42,8 @@ disable_service q-meta
 disable_service q-svc
 disable_service tempest
 disable_service mysql
-# enable_service postgresql
+{% if db == 'cockroachdb' %}
 enable_service cockroachdb
-# enable_plugin rally https://github.com/openstack/rally master
-
-
-# [[extra|/etc/rally/rally.conf]]
-# [database]
-# connection = sqlite:////etc/rally/.rally.sqlite
+{% elif db == 'mariadb' %}
+enable_service galera
+{% endif %}
