@@ -18,4 +18,3 @@ os_env:
   OS_AUTH_TYPE: password
   OS_PASSWORD: admin
   OS_USERNAME: admin
-  OS_VOLUME_API_VERSION: 2
