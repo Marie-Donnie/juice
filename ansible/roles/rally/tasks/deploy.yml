@@ -50,17 +50,24 @@
     env: "{{ os_env }}"
     command: deployment create --fromenv --name=discovery
 
+- name: Test whether the rally deployment has been created
+  command: >
+    docker run -v /root/rally_home:/home/rally/data xrally/xrally-openstack
+           deployment use discovery
+  when:
+    - inventory_hostname == dbmaster_node
+
 # ----------------------------------- Setup & run rally test
 
 # When --file was used
-- name: Specify the scenarios which will be used
+- name: files - Specify the scenarios which will be used
   debug:
     msg: "Launching following scenarios: {{ rally_files }}"
   when:
     - inventory_hostname == dbmaster_node
     - rally_files is defined
 
-- name: Run scenarios {{ rally_files | default(none) }}
+- name: files - Run scenarios {{ rally_files | default(none) }}
   command: >
     docker run -v /root/rally_home:/home/rally/data --name {{ item | regex_replace("/", "-") }} xrally/xrally-openstack
            task start /home/rally/source/samples/tasks/scenarios/{{ item }}
@@ -73,7 +80,7 @@
     - rally_files is defined
 
 # When --directory was used (default option with keystone)
-- name: Getting files to execute
+- name: directory - Getting files to execute
   command: >
     docker run --entrypoint=bash xrally/xrally-openstack -c "ls -Rp /home/rally/source/samples/tasks/scenarios/{{ rally_directory }} | grep -v / | grep yaml"
   register: scenarios
@@ -82,7 +89,7 @@
     - rally_files is not defined
     - rally_directory is defined
 
-- name: Specify the scenarios which will be used
+- name: directory - Specify the scenarios which will be used
   debug:
     msg: "Launching following scenarios: {{ scenarios.stdout_lines }}"
   when:
@@ -90,7 +97,7 @@
     - rally_files is not defined
     - rally_directory is defined
 
-- name: Run scenarios in {{ rally_directory | default(none) }}
+- name: directory - Run scenarios in {{ rally_directory | default(none) }}
   command: >
     docker run -v /root/rally_home:/home/rally/data --name {{ item }} xrally/xrally-openstack
     task start /home/rally/source/samples/tasks/scenarios/{{ rally_directory }}/{{ item }}
