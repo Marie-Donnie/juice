@@ -3,4 +3,5 @@
 - name: Using rally
   hosts: rally
   roles:
-    - rally
+    - { role: rally,
+        tags: rally }
