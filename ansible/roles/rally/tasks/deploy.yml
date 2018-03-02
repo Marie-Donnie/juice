@@ -6,14 +6,10 @@
     path: "/root/rally_home"
     state: directory
     owner: 65500
-  when:
-    - inventory_hostname == dbmaster_node
 
 - name: Test whether the rally database has been initialized
   stat: path=/root/rally_home/rally.db
   register: sqlite
-  when:
-    - inventory_hostname == dbmaster_node
 
 - name: Initialize database
   command: >
@@ -21,7 +17,6 @@
     xrally/xrally-openstack \
     db create
   when:
-    - inventory_hostname == dbmaster_node
     - not sqlite.stat.exists
 
 # NOTE(msimonin): without the pause
@@ -36,8 +31,6 @@
     xrally/xrally-openstack \
     deployment list
   register: deployment
-  when:
-    - inventory_hostname == dbmaster_node
 
 - name: Deploy discovery context
   docker_container:
@@ -49,7 +42,6 @@
     env: "{{ os_env }}"
     command: deployment create --fromenv --name=discovery
   when:
-    - inventory_hostname == dbmaster_node
     - "'discovery' not in deployment.stdout"
 
 
@@ -74,7 +66,6 @@
   # TODO: find a better failure condition, here it can't fail whatever error happened
   failed_when: False
   when:
-    - inventory_hostname == dbmaster_node
     - rally_files is defined
 
 
@@ -86,7 +77,6 @@
     -c "ls -Rp /home/rally/source/samples/tasks/scenarios/{{ rally_directory }} | grep -v / | grep yaml"
   register: scenarios
   when:
-    - inventory_hostname == dbmaster_node
     - rally_files is not defined
     - rally_directory is defined
 
