@@ -1,5 +1,6 @@
 ---
 
+
 # ---------------------------------------------- Setup rally
 - name: Create rally result directory
   file:
@@ -14,7 +15,7 @@
 - name: Initialize database
   command: >
     docker run -v /root/rally_home:/home/rally/data \
-    xrally/xrally-openstack \
+    beyondtheclouds/xrally-openstack \
     db create
   when:
     - not sqlite.stat.exists
@@ -28,14 +29,14 @@
 - name: Test whether the rally deployment has been created
   command: >
     docker run -v /root/rally_home:/home/rally/data \
-    xrally/xrally-openstack \
+    beyondtheclouds/xrally-openstack \
     deployment list
   register: deployment
 
 - name: Deploy discovery context
   docker_container:
     name: "rally-{{ inventory_hostname_short }}"
-    image: "xrally/xrally-openstack"
+    image: "beyondtheclouds/xrally-openstack"
     state: started
     volumes:
       - /root/rally_home:/home/rally/data
@@ -57,8 +58,8 @@
 - name: files - Run scenarios {{ rally_files | default(none) }}
   command: >
     docker run -v /root/rally_home:/home/rally/data \
-    --name {{ item | regex_replace("/", "-") }}-{{ ansible_date_time.time | regex_replace(":", "-") }} \
-    xrally/xrally-openstack \
+    --name {{ item | regex_replace("/", "-") }}-{{ lookup('pipe','date +%H-%M-%S') }} \
+    beyondtheclouds/xrally-openstack \
     task start /home/rally/source/samples/tasks/scenarios/{{ item }} \
     --deployment discovery
   with_items: "{{ rally_files }}"
@@ -72,7 +73,7 @@
 - name: directory - Getting files to execute
   command: >
     docker run --entrypoint=bash \
-    xrally/xrally-openstack \
+    beyondtheclouds/xrally-openstack \
     -c "ls -Rp /home/rally/source/samples/tasks/scenarios/{{ rally_directory }} | grep -v / | grep yaml"
   register: scenarios
   when:
@@ -89,8 +90,8 @@
 - name: directory - Run scenarios in {{ rally_directory | default(none) }}
   command: >
     docker run -v /root/rally_home:/home/rally/data \
-    --name {{ item }}-{{ ansible_date_time.time | regex_replace(":", "-") }} \
-    xrally/xrally-openstack
+    --name {{ item }}-{{ lookup('pipe','date +%H-%M-%S') }} \
+    beyondtheclouds/xrally-openstack
     task start /home/rally/source/samples/tasks/scenarios/{{ rally_directory }}/{{ item }}
     --deployment discovery
   with_items: "{{ scenarios.stdout_lines }}"
@@ -104,34 +105,30 @@
 
 - name: Find report identifier
   command: >
-    docker run -v /root/rally_home:/home/rally/data --name rally-find-uuid \
-    xrally/xrally-openstack \
+    docker run -v /root/rally_home:/home/rally/data \
+    beyondtheclouds/xrally-openstack \
     task list --uuids-only \
     --deployment discovery
   register: task_uuid
-  when:
-    - inventory_hostname == dbmaster_node
 
 - name: Generating rally reports (html)
   command: >
-    docker run -v /root/rally_home:/home/rally/data --name rally-html-{{ item }} \
-    xrally/xrally-openstack \
+    docker run -v /root/rally_home:/home/rally/data \
+    beyondtheclouds/xrally-openstack \
     task report --uuid {{ item }} \
     --html-static --out \
     /home/rally/data/report-{{ item }}.html
   with_items: "{{ task_uuid.stdout_lines }}"
   when:
-    - inventory_hostname == dbmaster_node
     - task_uuid.stdout != ""
 
 - name: Generating rally reports (json)
   command: >
-    docker run -v /root/rally_home:/home/rally/data --name rally-json-{{ item }} \
-    xrally/xrally-openstack \
+    docker run -v /root/rally_home:/home/rally/data \
+    beyondtheclouds/xrally-openstack \
     task report --uuid {{ item }} \
     --json --out \
     /home/rally/data/report-{{ item }}.json
   with_items: "{{ task_uuid.stdout_lines }}"
   when:
-    - inventory_hostname == dbmaster_node
     - task_uuid.stdout != ""
