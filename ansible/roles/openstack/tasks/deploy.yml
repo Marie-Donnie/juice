@@ -81,6 +81,13 @@
   when:
     - db == 'mariadb'
 
+- name: Patching devstack (Remove keystone bootstrapping)
+  template:
+    src: lib-keystone.j2
+    dest: /opt/stack/devstack/lib/keystone
+    owner: stack
+  become: true
+  become_user: stack
 
 - name: Create the devstack local.conf
   template:
