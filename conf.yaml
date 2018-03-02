@@ -1,7 +1,7 @@
 registry:
   type: none
 g5k:
-  walltime: "8:00:00"
+  walltime: "9:00:00"
   dhcp: true
   job_name: juice-tests
   env_name: debian9-x64-nfs
