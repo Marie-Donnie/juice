@@ -29,7 +29,7 @@
     editable: true # Doesn't work (https://github.com/ansible/ansible/issues/8355)
   with_items:
     - -e git+https://github.com/cockroachdb/cockroachdb-python.git#egg=cockroachdb
-    - -e git+https://github.com/rcherrueau/sqlalchemy-migrate.git@cockroachdb/pike#egg=sqlalchemy-migrate
+    - -e git+https://github.com/Marie-Donnie/sqlalchemy-migrate.git@cockroachdb/pike#egg=sqlalchemy-migrate
   when:
     - db == 'cockroachdb'
 
