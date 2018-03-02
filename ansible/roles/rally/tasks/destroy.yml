@@ -4,5 +4,10 @@
   shell: >
     docker rm $(docker ps -a | grep rally | grep -oEe '^([a-z]|[0-9]){12}')
   when:
-    - inventory_hostname == dbmaster_node
+    - '"rally" in tasks_ran'
+
+- name: Remove volume
+  command: >-
+    rm -rf /root/rally_home/
+  when:
     - '"rally" in tasks_ran'
