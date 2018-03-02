@@ -13,7 +13,7 @@
 
 - name: Initialize database
   command: >
-    docker run -v /root/rally_home:/home/rally/data --name rally-db-create \
+    docker run -v /root/rally_home:/home/rally/data \
     xrally/xrally-openstack \
     db create
   when:
@@ -27,7 +27,7 @@
 
 - name: Test whether the rally deployment has been created
   command: >
-    docker run -v /root/rally_home:/home/rally/data --name rally-list \
+    docker run -v /root/rally_home:/home/rally/data \
     xrally/xrally-openstack \
     deployment list
   register: deployment
@@ -52,13 +52,12 @@
   debug:
     msg: "Launching following scenarios: {{ rally_files }}"
   when:
-    - inventory_hostname == dbmaster_node
     - rally_files is defined
 
 - name: files - Run scenarios {{ rally_files | default(none) }}
   command: >
     docker run -v /root/rally_home:/home/rally/data \
-    --name rally-{{ item | regex_replace("/", "-") }} \
+    --name {{ item | regex_replace("/", "-") }}-{{ ansible_date_time.time | regex_replace(":", "-") }} \
     xrally/xrally-openstack \
     task start /home/rally/source/samples/tasks/scenarios/{{ item }} \
     --deployment discovery
@@ -72,7 +71,7 @@
 # When --directory was used (default option with keystone)
 - name: directory - Getting files to execute
   command: >
-    docker run --entrypoint=bash --name rally-dir \
+    docker run --entrypoint=bash \
     xrally/xrally-openstack \
     -c "ls -Rp /home/rally/source/samples/tasks/scenarios/{{ rally_directory }} | grep -v / | grep yaml"
   register: scenarios
