@@ -83,20 +83,20 @@
   debug:
     msg: "Launching following scenarios: {{ scenarios.stdout_lines }}"
   when:
-    - inventory_hostname == dbmaster_node
     - rally_files is not defined
     - rally_directory is defined
 
 - name: directory - Run scenarios in {{ rally_directory | default(none) }}
   command: >
-    docker run -v /root/rally_home:/home/rally/data --name rally-{{ item }} xrally/xrally-openstack
+    docker run -v /root/rally_home:/home/rally/data \
+    --name {{ item }}-{{ ansible_date_time.time | regex_replace(":", "-") }} \
+    xrally/xrally-openstack
     task start /home/rally/source/samples/tasks/scenarios/{{ rally_directory }}/{{ item }}
     --deployment discovery
   with_items: "{{ scenarios.stdout_lines }}"
   # TODO: find a better failure condition, here it can't fail whatever error happened
   failed_when: False
   when:
-    - inventory_hostname == dbmaster_node
     - rally_files is not defined
     - rally_directory is defined
 
