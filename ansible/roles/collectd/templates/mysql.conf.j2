@@ -3,6 +3,7 @@ LoadPlugin mysql
 # https://collectd.org/documentation/manpages/collectd.conf.5.shtml#plugin_mysql
 <Plugin mysql>
 	<Database galera>
+		# Only dbmaster_node because we get informations about the cluster
 		Host "{{ hostvars[dbmaster_node]['ansible_' + control_network]['ipv4']['address'] }}"
 		Port "3306"
 		User "root"
