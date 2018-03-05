@@ -120,7 +120,7 @@
     msg:
       - "Follow deployment with:"
       - "ssh -l root {{ inventory_hostname }} -- tail -f /tmp/stack-logs"
-
+  when: inventory_hostname == dbmaster_node
 
 - name: Run Devstack
   shell: /opt/stack/devstack/stack.sh &> /tmp/stack-logs
@@ -128,3 +128,19 @@
     executable: /bin/bash
   become: true
   become_user: stack
+  when: inventory_hostname == dbmaster_node
+
+- name: Start of Devstack deployment
+  debug:
+    msg:
+      - "Follow deployment with:"
+      - "ssh -l root {{ inventory_hostname }} -- tail -f /tmp/stack-logs"
+  when: inventory_hostname != dbmaster_node
+
+- name: Run Devstack
+  shell: /opt/stack/devstack/stack.sh &> /tmp/stack-logs
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: stack
+  when: inventory_hostname != dbmaster_node
