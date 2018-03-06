@@ -213,6 +213,11 @@ Benchmark the Openstack
 @doc()
 @enostask()
 def emulate(env=None, **kwargs):
+    """
+usage: juice emulate
+
+Emulate network
+    """
     inventory = env["inventory"]
     roles = env["roles"]
     emulate_network(roles, inventory, tc)
@@ -222,6 +227,11 @@ def emulate(env=None, **kwargs):
 @doc()
 @enostask()
 def validate(env=None, **kwargs):
+    """
+usage: juice validate
+
+Validate network. Doesn't work for now since there is no flent installed
+    """
     inventory = env["inventory"]
     roles = env["roles"]
     validate_network(roles, inventory)
