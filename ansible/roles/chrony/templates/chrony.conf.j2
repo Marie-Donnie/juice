@@ -17,7 +17,7 @@
 # fails they will be discarded.  Thus under some circumstances it is
 # better to use IP numbers than host names.
 {% for chrony_server in groups['control'] %}
-server {{ hostvars[chrony_server]['ansible_' + control_network]['ipv4']['address']}} iburst minpoll 5
+server {{ hostvars[chrony_server]['ansible_' + hostvars[chrony_server]['control_network']]['ipv4']['address']}} iburst minpoll 5
 {% endfor %}
 server 0.debian.pool.ntp.org offline minpoll 8
 server 1.debian.pool.ntp.org offline minpoll 8
@@ -67,7 +67,6 @@ allow all
 deny {{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}
 local stratum 10
 bindaddress {{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}
-
 {% else %}
  port 0
  deny all

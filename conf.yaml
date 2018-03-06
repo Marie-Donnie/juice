@@ -14,9 +14,9 @@ g5k:
           - openstack
           - rally
         cluster: grisou
-        nodes: 3
+        nodes: 1
         primary_network: n1
-        secondary_networks: []
+        secondary_networks: [n2]
       - roles:
           - control
           # - influxdb
@@ -24,12 +24,16 @@ g5k:
           # - chrony-server
         cluster: grisou
         nodes: 1
-        primary_network: n1
+        primary_network: n2
         secondary_networks: []
     networks:
       - id: n1
         roles:
+          - database_network
+        type: kavlan
+        site: nancy
+      - id: n2
+        roles:
           - control_network
-          - internal_network
         type: prod
         site: nancy

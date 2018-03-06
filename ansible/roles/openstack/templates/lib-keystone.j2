@@ -611,8 +611,8 @@ function bootstrap_keystone {
         --bootstrap-public-url "$KEYSTONE_SERVICE_URI"
     {% for item in groups['database'] %}
     {% if item != inventory_hostname %}
-    openstack --os-identity-api-version=3 endpoint create --region "{{ hostvars[item].inventory_hostname_short }}" keystone admin http://"{{ hostvars[item]['ansible_' + control_network]['ipv4']['address'] }}"/identity
-    openstack --os-identity-api-version=3 endpoint create --region "{{ hostvars[item].inventory_hostname_short }}" keystone public http://"{{ hostvars[item]['ansible_' + control_network]['ipv4']['address'] }}"/identity
+    openstack --os-identity-api-version=3 endpoint create --region "{{ hostvars[item].inventory_hostname_short }}" keystone admin http://"{{ hostvars[item]['ansible_' + database_network]['ipv4']['address'] }}"/identity
+    openstack --os-identity-api-version=3 endpoint create --region "{{ hostvars[item].inventory_hostname_short }}" keystone public http://"{{ hostvars[item]['ansible_' + database_network]['ipv4']['address'] }}"/identity
     {% endif %}
     {% endfor %}
     {% endif %}

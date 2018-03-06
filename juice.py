@@ -50,8 +50,15 @@ SYMLINK_NAME = os.path.abspath(os.path.join(os.getcwd(), 'current'))
 
 tc = {
     "enable": True,
-    "default_delay": "20ms",
-    "default_rate": "1gbit",
+    "default_delay": "0ms",
+    "default_rate": "10gbit",
+    "constraints": [{
+        "src": "database",
+        "dst": "database",
+        "delay": "200ms",
+        "rate": "10gbit",
+        "loss": "0",
+    }],
 }
 
 

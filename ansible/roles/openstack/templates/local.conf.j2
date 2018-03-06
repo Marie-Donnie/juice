@@ -1,9 +1,9 @@
 [[local|localrc]]
 REGION_NAME="{{ inventory_hostname_short }}"
 KEYSTONE_REGION_NAME="${REGION_NAME}"
-HOST_IP="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}"
+HOST_IP="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
 ADMIN_PASSWORD=admin
-DATABASE_HOST="{{ hostvars[inventory_hostname]['ansible_' + control_network]['ipv4']['address'] }}"
+DATABASE_HOST="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
 DATABASE_USER=root
 DATABASE_PASSWORD=my-secret-pw
 RABBIT_PASSWORD=admin
