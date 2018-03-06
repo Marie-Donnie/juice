@@ -15,6 +15,7 @@ Commands:
     info           Show information of the actual deployment
     inventory      Generate the Ansible inventory file
     prepare        Configure the resources
+    emulate        Emulate network using tc
     stress         Launch sysbench tests (after a deployment)
     openstack      Add OpenStack Keystone to the deployment
     rally          Benchmark the Openstack
@@ -217,14 +218,15 @@ Benchmark the Openstack
     env["tasks_ran"].append('rally')
 
 
-@doc()
+@doc(tc)
 @enostask()
 def emulate(env=None, **kwargs):
     """
 usage: juice emulate
 
-Emulate network
+Emulate network using: {0}
     """
+    logging.info("Emulates using constraints: %s" % tc)
     inventory = env["inventory"]
     roles = env["roles"]
     emulate_network(roles, inventory, tc)
