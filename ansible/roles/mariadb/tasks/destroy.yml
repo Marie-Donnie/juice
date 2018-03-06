@@ -4,3 +4,10 @@
     name: "mariadb-{{ inventory_hostname_short }}"
     state: absent
     force_kill: yes
+
+- name: Remove volumes
+  file:
+    state: absent
+    path: {{ item }}
+  with_items:
+    - ["/opt/local/etc/mysql.conf.d/", "/mnt/data/mysql"]
