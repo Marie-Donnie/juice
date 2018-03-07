@@ -62,7 +62,7 @@
     beyondtheclouds/xrally-openstack \
     task start /home/rally/source/samples/tasks/scenarios/{{ item }} \
     --deployment discovery
-  with_items: "{{ rally_files }}"
+  with_items: "{{ rally_files | shuffle(seed=inventory_hostname) }}"
   # TODO: find a better failure condition, here it can't fail whatever error happened
   failed_when: False
   when:
@@ -94,7 +94,7 @@
     beyondtheclouds/xrally-openstack
     task start /home/rally/source/samples/tasks/scenarios/{{ rally_directory }}/{{ item }}
     --deployment discovery
-  with_items: "{{ scenarios.stdout_lines }}"
+  with_items: "{{ scenarios.stdout_lines | shuffle(seed=inventory_hostname) }}"
   # TODO: find a better failure condition, here it can't fail whatever error happened
   failed_when: False
   when:
