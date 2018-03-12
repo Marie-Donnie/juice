@@ -55,19 +55,15 @@
   when:
     - rally_files is defined
 
-- name: files - Run scenarios {{ rally_files | default(none) }}
-  command: >
-    docker run -v /root/rally_home:/home/rally/data \
-    --name {{ item | regex_replace("/", "-") }}-{{ lookup('pipe','date +%H-%M-%S') }} \
-    beyondtheclouds/xrally-openstack \
-    task start /home/rally/source/samples/tasks/scenarios/{{ item }} \
-    --deployment discovery
-  with_items: "{{ rally_files | shuffle(seed=inventory_hostname) }}"
-  # TODO: find a better failure condition, here it can't fail whatever error happened
-  failed_when: False
+- name: Generate scenario execution playboook
+  template:
+    src: rally-scenarios.yaml.j2
+    dest: ./rally-scenarios.yaml
+  run_once: True
+  delegate_to: 127.0.0.1
+  with_list:  "{{ [rally_files] }}"
   when:
     - rally_files is defined
-
 
 # When --directory was used (default option with keystone)
 - name: directory - Getting files to execute
@@ -87,19 +83,20 @@
     - rally_files is not defined
     - rally_directory is defined
 
-- name: directory - Run scenarios in {{ rally_directory | default(none) }}
-  command: >
-    docker run -v /root/rally_home:/home/rally/data \
-    --name {{ item }}-{{ lookup('pipe','date +%H-%M-%S') }} \
-    beyondtheclouds/xrally-openstack
-    task start /home/rally/source/samples/tasks/scenarios/{{ rally_directory }}/{{ item }}
-    --deployment discovery
-  with_items: "{{ scenarios.stdout_lines | shuffle(seed=inventory_hostname) }}"
-  # TODO: find a better failure condition, here it can't fail whatever error happened
-  failed_when: False
+- name: Generate scenario execution playboook
+  template:
+    src: rally-scenarios.yaml.j2
+    dest: ./rally-scenarios.yaml
+  run_once: True
+  delegate_to: 127.0.0.1
+  with_list:  "{{ [scenarios.stdout_lines] }}"
   when:
     - rally_files is not defined
     - rally_directory is defined
+
+- name: Include run scenarios
+  include: rally-scenarios.yaml
+
 
 # -------------------------------- Download results (if any)
 
