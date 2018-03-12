@@ -8,6 +8,7 @@
 - name: Remove volumes
   file:
     state: absent
-    path: {{ item }}
+    path: "{{ item }}"
   with_items:
-    - ["/opt/local/etc/mysql.conf.d/", "/mnt/data/mysql"]
+    - "/opt/local/etc/mysql.conf.d/"
+    - "/mnt/data/mysql"
