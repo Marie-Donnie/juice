@@ -113,3 +113,7 @@ current
 
 # lua tests
 tests/
+
+# rally
+
+rally-scenarios.yaml
