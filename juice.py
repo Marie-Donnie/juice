@@ -220,15 +220,17 @@ Benchmark the Openstack
 
 @doc(tc)
 @enostask()
-def emulate(env=None, **kwargs):
+def emulate(env=None, tc=tc, **kwargs):
     """
 usage: juice emulate
 
 Emulate network using: {0}
     """
-    logging.info("Emulates using constraints: %s" % tc)
     inventory = env["inventory"]
     roles = env["roles"]
+    # if "tc" in env["config"]:
+    #     tc = env["config"]["tc"]
+    logging.info("Emulates using constraints: %s" % tc)
     emulate_network(roles, inventory, tc)
     env["tasks_ran"].append('emulate')
 
