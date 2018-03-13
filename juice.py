@@ -60,6 +60,7 @@ tc = {
         "rate": "10gbit",
         "loss": "0",
     }],
+    "groups": ['database'],
 }
 
 
