@@ -15,9 +15,9 @@ g5k:
           - openstack
           - rally
         cluster: grisou
-        nodes: 1
-        primary_network: n1
-        secondary_networks: [n2]
+        nodes: 10
+        primary_network: n2
+        secondary_networks: [n1]
       - roles:
           - control
           # - influxdb
