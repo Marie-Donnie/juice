@@ -283,9 +283,11 @@ usage: juice backup
 
 Backup the environment, requires g5k, inventory and prepare executions
     """
+    db = env["db"]
+    nb_nodes = len(env["roles"]["database"])
     extra_vars = {
         "enos_action": "backup",
-        "backup_dir": os.path.join(os.getcwd(), "current/backup"),
+        "backup_dir": os.path.join(os.getcwd(), "current/backup/%s-nodes/%s" % (nb_nodes, db)),
         "tasks_ran" : env["tasks_ran"],
     }
     run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
