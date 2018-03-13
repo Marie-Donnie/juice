@@ -190,23 +190,20 @@ Launch OpenStack
 
 @doc()
 @enostask()
-def rally(db, files, directory, env=None, **kwargs):
+def rally(files, directory, env=None, **kwargs):
     """
-usage: juice rally [--db {mariadb,cockroachdb}] [--files FILE... | --directory DIRECTORY]
+usage: juice rally [--files FILE... | --directory DIRECTORY]
 
 Benchmark the Openstack
 
-  --db DATABASE         Database to test [default: cockroachdb]
   --files FILE          Files to use for rally scenarios (name must be a path from rally scenarios folder).
   --directory DIRECTORY    Directory that contains rally scenarios. [default: keystone]
     """
-    db_validation(db)
-    logging.info("Launching rally using scenarios : %s" % ( ', '.join(files)))
+    logging.info("Launching rally using scenarios: %s" % ( ', '.join(files)))
     logging.info("Launching rally using all scenarios in %s directory.", directory)
     # Generate inventory
     extra_vars = {
         "registry": env["config"]["registry"],
-        "db": db,
     }
     if files:
         extra_vars.update({"rally_files": files})
