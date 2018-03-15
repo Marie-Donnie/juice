@@ -219,7 +219,7 @@ Benchmark the Openstack
 
 @doc(tc)
 @enostask()
-def emulate(env=None, tc=tc, **kwargs):
+def emulate(tc=tc, env=None, **kwargs):
     """
 usage: juice emulate
 
