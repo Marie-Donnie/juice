@@ -56,9 +56,10 @@ tc = {
     "constraints": [{
         "src": "database",
         "dst": "database",
-        "delay": "200ms",
+        "delay": "150ms",
         "rate": "10gbit",
         "loss": "0",
+        "network": "database_network",
     }],
     "groups": ['database'],
 }
