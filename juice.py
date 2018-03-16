@@ -56,7 +56,7 @@ tc = {
     "constraints": [{
         "src": "database",
         "dst": "database",
-        "delay": "150ms",
+        "delay": "0ms",
         "rate": "10gbit",
         "loss": "0",
         "network": "database_network",
@@ -319,6 +319,46 @@ and inventory executions
     run_ansible(["ansible/openstack.yml"], env["inventory"], extra_vars=extra_vars)
     run_ansible(["ansible/rally.yml"], env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('destroy')
+
+
+@doc()
+@enostask()
+def exp(conf, db, locality, **kwargs):
+    """
+usage: juice exp [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}] [--locality]
+
+Launch a full experiment
+
+Options:
+  --conf CONFIG_PATH    Path to the configuration file describing the
+                        deployment [default: ./conf.yaml]
+  --db DATABASE         Database to deploy on [default: cockroachdb]
+  --locality            Use follow-the-workload (only for CockroachDB)
+    """
+    for delay in [0, 50, 150]:
+        tc['constraints'][0]['delay'] = "%sms" % delay
+        deploy(conf, db, locality)
+        openstack(db)
+        emulate(tc)
+        rally(["keystone/authenticate-user-and-validate-token.yaml", "keystone/create-add-and-list-user-roles.yaml", "keystone/create-and-list-tenants.yaml", "keystone/get-entities.yaml", "keystone/create-and-update-user.yaml", "keystone/create-user-update-password.yaml", "keystone/create-user-set-enabled-and-delete.yaml", "keystone/create-and-list-users.yaml"], "keystone")
+        backup()
+        destroy()
+        tc['constraints'][0]['delay'] = '0ms'
+        emulate(tc)
+
+        # deploy("./conf-25.yaml", db, locality)
+        # openstack(db)
+        # emulate(tc)
+        # rally()
+        # backup()
+        # destroy()
+
+        # deploy("./conf-50.yaml", db, locality)
+        # openstack(db)
+        # emulate(tc)
+        # rally()
+        # backup()
+        # destroy()
 
 
 if __name__ == '__main__':
