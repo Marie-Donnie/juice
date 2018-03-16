@@ -4,7 +4,7 @@ LoadPlugin mysql
 <Plugin mysql>
 	<Database galera>
 		# Only dbmaster_node because we get informations about the cluster
-		Host "{{ hostvars[dbmaster_node]['ansible_' + database_network]['ipv4']['address'] }}"
+		Host "{{ hostvars[dbmaster_node]['ansible_' + hostvars[dbmaster_node]['database_network']]['ipv4']['address'] }}"
 		Port "3306"
 		User "root"
 		Password "my-secret-pw"
