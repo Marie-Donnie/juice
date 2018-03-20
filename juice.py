@@ -28,6 +28,7 @@ Run 'juice COMMAND --help' for more information on a command
 import os
 import logging
 import yaml
+import sys
 
 from docopt import docopt
 import pprint
@@ -80,8 +81,18 @@ Options:
   --locality            Use follow-the-workload (only for CockroachDB)
     """
     config = {}
-    with open(conf) as f:
-        config = yaml.load(f)
+
+    if isinstance(conf, basestring):
+        # Get the config object from a yaml file
+        with open(conf) as f:
+            config = yaml.load(f)
+    elif isinstance(conf, dict):
+        # Get the config object from a dict
+        config = conf
+    else:
+        # Data format error
+        sys.exit(65)
+
     db_validation(db)
 
     g5k(config=config)
