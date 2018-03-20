@@ -21,13 +21,15 @@
   hosts: control
   roles:
     - { role: influxdb,
-        tags: influxdb }
+        tags: influxdb,
+        when: enable_monitoring | bool }
 
 - name: Deploy the grafana
   hosts: control
   roles:
     - { role: grafana,
-        tags: grafana }
+        tags: grafana,
+        when: enable_monitoring | bool }
 
 - name: CockroachDB master deployment
   hosts:
@@ -52,4 +54,5 @@
         tags: cadvisor }
     - { role: collectd,
         tags: collectd,
-        when: db == "mariadb" }
+        when: db == "mariadb",
+        when: enable_monitoring | bool }
