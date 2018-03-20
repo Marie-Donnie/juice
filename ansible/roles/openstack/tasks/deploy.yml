@@ -128,6 +128,9 @@
     executable: /bin/bash
   become: true
   become_user: stack
+  register: result
+  until: result|succeeded
+  retries: 3
   when: inventory_hostname == dbmaster_node
 
 - name: Start of Devstack deployment
