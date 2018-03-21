@@ -19,7 +19,7 @@ wsrep_cluster_address="gcomm://{% for it in item %}{{ hostvars[it]['ansible_' + 
 wsrep-sst-method=rsync
 
 # https://mariadb.com/kb/en/library/galera-cluster-system-variables/#wsrep_sync_wait
-wsrep_sync_wait=1
+wsrep_sync_wait=15
 #
 # Optional setting
 #
