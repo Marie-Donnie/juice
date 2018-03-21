@@ -38,6 +38,9 @@ g5k:
           - control_network
         type: prod
         site: nancy
+
+enable_monitoring: true
+
 tc:
   enable: True
   default_delay: 0ms
