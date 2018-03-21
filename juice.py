@@ -114,6 +114,7 @@ Claim resources on Grid'5000 (from a frontend)
     env["roles"] = roles
     env["networks"] = networks
     env["tasks_ran"] = ['g5k']
+    env["latency"] = "0ms"
 
 
 @doc()
@@ -242,6 +243,7 @@ Emulate network using: {0}
     #     tc = env["config"]["tc"]
     logging.info("Emulates using constraints: %s" % tc)
     emulate_network(roles, inventory, tc)
+    env["latency"] = tc['constraints'][0]['delay']
     env["tasks_ran"].append('emulate')
 
 
@@ -297,9 +299,10 @@ Backup the environment, requires g5k, inventory and prepare executions
     """
     db = env["db"]
     nb_nodes = len(env["roles"]["database"])
+    latency = env["latency"]
     extra_vars = {
         "enos_action": "backup",
-        "backup_dir": os.path.join(os.getcwd(), "current/backup/%s-nodes/%s" % (nb_nodes, db)),
+        "backup_dir": os.path.join(os.getcwd(), "current/backup/%snodes-%s-%s" % (nb_nodes, db, latency)),
         "tasks_ran" : env["tasks_ran"],
     }
     run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
@@ -357,19 +360,6 @@ Options:
         tc['constraints'][0]['delay'] = '0ms'
         emulate(tc)
 
-        # deploy("./conf-25.yaml", db, locality)
-        # openstack(db)
-        # emulate(tc)
-        # rally()
-        # backup()
-        # destroy()
-
-        # deploy("./conf-50.yaml", db, locality)
-        # openstack(db)
-        # emulate(tc)
-        # rally()
-        # backup()
-        # destroy()
 
 
 if __name__ == '__main__':
