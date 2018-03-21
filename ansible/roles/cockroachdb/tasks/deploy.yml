@@ -1,5 +1,10 @@
 ---
 
+- name: Create the directories
+  file:
+    path: "/tmp/cockroach-data/"
+    state: directory
+
 # See https://www.cockroachlabs.com/docs/stable/start-a-local-cluster-in-docker.html
 # See https://www.cockroachlabs.com/docs/stable/demo-follow-the-workload.html for locality
 
@@ -12,7 +17,12 @@
     ports:
       - 26257:26257
       - 8080:8080
-    command: start --insecure --advertise-host="{{ hostvars[inventory_hostname]['ansible_' + hostvars[inventory_hostname]['database_network']]['ipv4']['address'] }}" {% if locality %} --locality=region="{{inventory_hostname_short}}"{% endif %}
+    volumes:
+      - "/tmp/cockroach-data:/cockroach/cockroach-data"
+    command: >
+      start --insecure
+      --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
+      {% if locality %} --locality=region="{{inventory_hostname_short}}"{% endif %}
   when:
     - inventory_hostname == dbmaster_node
 
@@ -31,7 +41,13 @@
     ports:
       - 26257:26257
       - 8080:8080
-    command: start --insecure --join="{{ hostvars[dbmaster_node]['ansible_' + hostvars[inventory_hostname]['database_network']]['ipv4']['address'] }}" --advertise-host="{{ hostvars[inventory_hostname]['ansible_' + hostvars[inventory_hostname]['database_network']]['ipv4']['address'] }}"{% if locality %} --locality=region="{{inventory_hostname_short}}"{% endif %}
+    volumes:
+      - "/tmp/cockroach-data:/cockroach/cockroach-data"
+    command: >
+      start --insecure
+      --join="{{ hostvars[dbmaster_node]['ansible_'+ database_network]['ipv4']['address'] }}"
+      --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
+      {% if locality %} --locality=region="{{inventory_hostname_short}}"{% endif %}
   when:
     - inventory_hostname != dbmaster_node
 

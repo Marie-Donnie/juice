@@ -4,3 +4,8 @@
     name: "cockroachdb-{{ inventory_hostname_short }}"
     state: absent
     force_kill: yes
+
+- name: Remove volumes
+  file:
+    state: absent
+    path: "/tmp/cockroach-data"
