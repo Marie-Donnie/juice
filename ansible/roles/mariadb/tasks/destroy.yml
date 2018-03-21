@@ -11,4 +11,4 @@
     path: "{{ item }}"
   with_items:
     - "/opt/local/etc/mysql.conf.d/"
-    - "/mnt/data/mysql"
+    - "/tmp/data/"
