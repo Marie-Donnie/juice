@@ -117,3 +117,8 @@ tests/
 # rally
 
 rally-scenarios.yaml
+
+
+# Sweeper
+sweeper
+

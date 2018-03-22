@@ -67,7 +67,7 @@ tc = {
 
 
 @doc()
-def deploy(conf, db, locality, **kwargs):
+def deploy(conf, db, locality, xp_name=None):
     """
 usage: juice deploy [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}]
                     [--locality]
@@ -95,7 +95,7 @@ Options:
 
     db_validation(db)
 
-    g5k(config=config)
+    g5k(env=xp_name, config=config)
     inventory()
     prepare(db=db, locality=locality)
 
