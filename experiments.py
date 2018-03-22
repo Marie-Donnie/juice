@@ -9,13 +9,15 @@ import juice as j
 from execo_engine.sweep import (ParamSweeper, sweep)
 
 
-WALLTIME = '04:58:00'
-# WALLTIME = '01:40:00'
-RESERVATION = '2018-03-21 04:01:01'
-# RESERVATION = None
+SWEEPER_DIR = './sweeper'
 
-# DATABASES = ['mariadb', 'cockroachdb']
-DATABASES = ['mariadb']
+WALLTIME = '08:20:00'
+# WALLTIME = '01:40:00'
+# RESERVATION = '2018-03-21 01:15:00'
+RESERVATION = None
+
+DATABASES = [('mariadb', False), ('cockroachdb', False), ('cockroachdb', True)]
+# DATABASES = [('mariadb', False)]
 CLUSTER_SIZES = [3, 25, 45]
 # CLUSTER_SIZES = [2]
 DELAYS = [0, 50, 150]
@@ -24,13 +26,14 @@ DELAYS = [0, 50, 150]
 MAX_CLUSTER_SIZE = max(CLUSTER_SIZES)
 
 CONF = {
-  'enable_monitoring': False,
+  'enable_monitoring': True,
   'g5k': {'dhcp': True,
           'env_name': 'debian9-x64-nfs',
-          'job_name': 'juice-tests',
+          'job_name': 'juice-tests-cockroachdb',
+          'queue': 'testing',
           'walltime': WALLTIME,
           'reservation': RESERVATION,
-          'resources': {'machines': [{'cluster': 'graphene',
+          'resources': {'machines': [{'cluster': 'ecotype',
                                       'nodes': MAX_CLUSTER_SIZE,
                                       'roles': ['chrony',
                                                 'database',
@@ -38,16 +41,20 @@ CONF = {
                                                 'openstack',
                                                 'rally'],
                                       'primary_network': 'n1',
-                                      'secondary_networks': []},
-                                     {'cluster': 'graphene',
+                                      'secondary_networks': ['n2']},
+                                     {'cluster': 'ecotype',
                                       'nodes': 1,
                                       'roles': ['registry', 'control'],
                                       'primary_network': 'n1',
                                       'secondary_networks': []}],
                         'networks': [{'id': 'n1',
-                                      'roles': ['database_network', 'control_network'],
-                                      'site': 'nancy',
+                                      'roles': ['control_network'],
+                                      'site': 'nantes',
                                       'type': 'prod'},
+                                      {'id': 'n2',
+                                      'roles': ['database_network'],
+                                      'site': 'nantes',
+                                      'type': 'kavlan'},
                                      ]}},
   'registry': {'ceph': True,
                'ceph_id': 'discovery',
@@ -86,7 +93,7 @@ logging.basicConfig(level=logging.INFO)
 
 def keystone_exp():
     sweeper = ParamSweeper(
-      './sweeper',
+      SWEEPER_DIR,
       sweeps=sweep({
           'db':    DATABASES
         , 'delay': DELAYS
@@ -103,10 +110,14 @@ def keystone_exp():
                                    # multiple sweeps in parallels
         conf['g5k']['resources']['machines'][0]['nodes'] = combination['db-nodes']
         conf['tc']['constraints'][0]['delay'] = "%sms" % combination['delay']
-        db = combination['db']
+        db = combination['db'][0]
+        db_locality = combination['db'][1]
+
+        xp_name = "%s-%s-%s-" % (db, combination['db-nodes'], combination['delay'])
+        xp_name = xp_name + ("local" if db_locality else "nonlocal")
 
         # Let's get it started hun!
-        j.deploy(conf, db, False)
+        j.deploy(conf, db, db_locality, xp_name)
         j.openstack(db)
         j.emulate(conf['tc'])
         j.rally(SCENARIOS, "keystone")

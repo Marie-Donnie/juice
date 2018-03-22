@@ -51,7 +51,8 @@
   hosts: database
   roles:
     - { role: cadvisor,
-        tags: cadvisor }
+        tags: cadvisor, 
+        when: enable_monitoring | bool  }
     - { role: collectd,
         tags: collectd,
         when: db == "mariadb",
