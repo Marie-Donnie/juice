@@ -67,7 +67,7 @@ tc = {
 
 
 @doc()
-def deploy(conf, db, locality, xp_name=None):
+def deploy(conf, db, locality, xp_name=None, **kwargs):
     """
 usage: juice deploy [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}]
                     [--locality]
