@@ -1,16 +1,5 @@
 ---
 
-- name: Removes Cockroach keystone database if present
-  postgresql_db:
-    name: keystone
-    login_host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
-    login_user: root
-    port: 26257
-    state: absent
-  when:
-    - db == 'cockroachdb'
-    - inventory_hostname == dbmaster_node
-
 - name: Removes MariaDB keystone database if present
   mysql_db:
     name: keystone
@@ -18,20 +7,6 @@
     login_user: root
     login_password: my-secret-pw
     state: absent
-  when:
-    - db == 'mariadb'
-    - inventory_hostname == dbmaster_node
-
-
-- name: Install CockroachDB SQLAlchemy Dialect + Updated version of sqlalchemy-migrate
-  pip:
-    name: "{{item}}"
-    editable: true # Doesn't work (https://github.com/ansible/ansible/issues/8355)
-  with_items:
-    - -e git+https://github.com/cockroachdb/cockroachdb-python.git#egg=cockroachdb
-    - -e git+https://github.com/Marie-Donnie/sqlalchemy-migrate.git@cockroachdb/pike#egg=sqlalchemy-migrate
-  when:
-    - db == 'cockroachdb'
 
 
 - name: Add stack user
@@ -61,17 +36,7 @@
   become_user: stack
 
 
-- name: Patching devstack (Add support to cockroachdb database)
-  template:
-    src: lib-cockroachdb.j2
-    dest: /opt/stack/devstack/lib/databases/cockroachdb
-    owner: stack
-  become: true
-  become_user: stack
-  when:
-    - db == 'cockroachdb'
-
-- name: Patching devstack (Add support to mariadb-galera database)
+- name: Patching devstack (Add support to mariadb database)
   template:
     src: lib-mariadb.j2
     dest: /opt/stack/devstack/lib/databases/mariadb
@@ -81,14 +46,6 @@
   when:
     - db == 'mariadb'
 
-- name: Patching devstack (Remove keystone bootstrapping)
-  template:
-    src: lib-keystone.j2
-    dest: /opt/stack/devstack/lib/keystone
-    owner: stack
-  become: true
-  become_user: stack
-
 - name: Create the devstack local.conf
   template:
     src: local.conf.j2
@@ -96,7 +53,6 @@
     owner: stack
   become: true
   become_user: stack
-
 
 - name: Clear Devstack
   shell: /opt/stack/devstack/unstack.sh &> /tmp/stack-logs
@@ -114,13 +70,11 @@
 - name: Install MySQL sources
   shell: DEBIAN_FRONTEND=noninteractive dpkg -i /tmp/my-sql-apt-config.deb
 
-
 - name: Start of Devstack deployment
   debug:
     msg:
       - "Follow deployment with:"
       - "ssh -l root {{ inventory_hostname }} -- tail -f /tmp/stack-logs"
-  when: inventory_hostname == dbmaster_node
 
 - name: Run Devstack
   shell: /opt/stack/devstack/stack.sh &> /tmp/stack-logs
@@ -131,19 +85,3 @@
   register: result
   until: result|succeeded
   retries: 3
-  when: inventory_hostname == dbmaster_node
-
-- name: Start of Devstack deployment
-  debug:
-    msg:
-      - "Follow deployment with:"
-      - "ssh -l root {{ inventory_hostname }} -- tail -f /tmp/stack-logs"
-  when: inventory_hostname != dbmaster_node
-
-- name: Run Devstack
-  shell: /opt/stack/devstack/stack.sh &> /tmp/stack-logs
-  args:
-    executable: /bin/bash
-  become: true
-  become_user: stack
-  when: inventory_hostname != dbmaster_node

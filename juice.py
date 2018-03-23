@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Tool to test Keystone over Galera and CockroachdB on Grid'5000 using Enoslib
+"""Tool to test Keystone Federation over MariaDB on Grid'5000 using Enoslib
 
 Usage:
     juice [-h | --help] [-v | --version] <command> [<args>...]
@@ -67,9 +67,9 @@ tc = {
 
 
 @doc()
-def deploy(conf, db, locality, xp_name=None, **kwargs):
+def deploy(conf, xp_name=None, **kwargs):
     """
-usage: juice deploy [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}]
+usage: juice deploy [--conf CONFIG_PATH]
                     [--locality]
 
 Claim resources from g5k and configure them.
@@ -77,8 +77,6 @@ Claim resources from g5k and configure them.
 Options:
   --conf CONFIG_PATH    Path to the configuration file describing the
                         deployment [default: ./conf.yaml]
-  --db DATABASE         Database to deploy on [default: cockroachdb]
-  --locality            Use follow-the-workload (only for CockroachDB)
     """
     config = {}
 
@@ -97,7 +95,7 @@ Options:
 
     g5k(env=xp_name, config=config)
     inventory()
-    prepare(db=db, locality=locality)
+    prepare(locality=locality)
 
 
 @doc()
@@ -134,25 +132,18 @@ Generate the Ansible inventory file, requires a g5k execution
 
 @doc()
 @enostask()
-def prepare(env=None, db='cockroachdb', locality=False, **kwargs):
+def prepare(env=None, **kwargs):
     """
-usage: juice prepare [--db {mariadb,cockroachdb}] [--locality]
+usage: juice prepare
 
 Configure the resources, requires both g5k and inventory executions
-
-  --db DATABASE         Database to deploy on [default: cockroachdb]
-  --locality            Use follow-the-workload (only for CockroachDB)
     """
-    db_validation(db)
     # Generate inventory
     extra_vars = {
-        "registry": env["config"]["registry"],
-        "db": db,
-        "locality": locality,
+        "registry": env["config"]["registry"]
         # Set monitoring to True by default
         "enable_monitoring": env['config'].get('enable_monitoring', True)
     }
-    env["db"] = db
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
     run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
@@ -163,17 +154,14 @@ Configure the resources, requires both g5k and inventory executions
 @enostask()
 def stress(db, env=None, **kwargs):
     """
-usage: juice stress [--db {mariadb,cockroachdb}]
+usage: juice stress
 
 Launch sysbench tests
 
-  --db DATABASE         Database to test [default: cockroachdb]
     """
-    db_validation(db)
     # Generate inventory
     extra_vars = {
         "registry": env["config"]["registry"],
-        "db": db,
     }
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
@@ -185,17 +173,13 @@ Launch sysbench tests
 @enostask()
 def openstack(db, env=None, **kwargs):
     """
-usage: juice openstack [--db {mariadb,cockroachdb}]
+usage: juice openstack
 
 Launch OpenStack
-
-  --db DATABASE         Database to test [default: cockroachdb]
     """
-    db_validation(db)
     # Generate inventory
     extra_vars = {
         "registry": env["config"]["registry"],
-        "db": db,
     }
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
@@ -297,12 +281,11 @@ usage: juice backup
 
 Backup the environment, requires g5k, inventory and prepare executions
     """
-    db = env["db"]
     nb_nodes = len(env["roles"]["database"])
     latency = env["latency"]
     extra_vars = {
         "enos_action": "backup",
-        "backup_dir": os.path.join(os.getcwd(), "current/backup/%snodes-%s-%s" % (nb_nodes, db, latency)),
+        "backup_dir": os.path.join(os.getcwd(), "current/backup/federation-%snodes-%s" % (nb_nodes, latency)),
         "tasks_ran" : env["tasks_ran"],
     }
     run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
@@ -325,7 +308,6 @@ and inventory executions
     # Call destroy on each component
     extra_vars.update({
         "enos_action": "destroy",
-        "db": env["db"],
         "tasks_ran" : env["tasks_ran"],
     })
     run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
@@ -339,20 +321,18 @@ and inventory executions
 @enostask()
 def exp(conf, db, locality, **kwargs):
     """
-usage: juice exp [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}] [--locality]
+usage: juice exp [--conf CONFIG_PATH]
 
 Launch a full experiment
 
 Options:
   --conf CONFIG_PATH    Path to the configuration file describing the
                         deployment [default: ./conf.yaml]
-  --db DATABASE         Database to deploy on [default: cockroachdb]
-  --locality            Use follow-the-workload (only for CockroachDB)
     """
     for delay in [0, 50, 150]:
         tc['constraints'][0]['delay'] = "%sms" % delay
-        deploy(conf, db, locality)
-        openstack(db)
+        deploy(conf)
+        openstack()
         emulate(tc)
         rally(["keystone/authenticate-user-and-validate-token.yaml", "keystone/create-add-and-list-user-roles.yaml", "keystone/create-and-list-tenants.yaml", "keystone/get-entities.yaml", "keystone/create-and-update-user.yaml", "keystone/create-user-update-password.yaml", "keystone/create-user-set-enabled-and-delete.yaml", "keystone/create-and-list-users.yaml"], "keystone")
         backup()

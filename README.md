@@ -25,11 +25,9 @@ Change *conf.yaml* according to your needs.
 
 ## Launch
 
-Launch with `./juice.py deploy` or `./juice.py deploy --db=<db>` with db being 'cockroachdb' (default) or 'mariadb'.
+Launch with `./juice.py deploy` or `./juice.py deploy` with db being 'cockroachdb' (default) or 'mariadb'.
 
-Once it has been launched, you can destroy the containers using `./juice destroy` and then restart them with `./juice prepare --db=<db>`.
-
-If you want to use the [follow-the-workload](https://www.cockroachlabs.com/blog/follow-the-workload/) feature for CockroachDB, you can add `--locality` to your deployment.
+Once it has been launched, you can destroy the containers using `./juice destroy` and then restart them with `./juice prepare`.
 
 ### Getting information about the used environment
 
@@ -39,7 +37,7 @@ Use `./juice.py info` to get informations about current environment. You can for
 
 #### Sysbench
 
-You can launch sysbench tests afterwards using `./juice stess --db=<db>`.
+You can launch sysbench tests afterwards using `./juice stess`.
 
 #### Rally (CockroachDB only for now)
 
@@ -68,7 +66,7 @@ Backup important metrics using `./juice.py backup`.
 ## Help
 
 ```
-Tool to test Keystone over Galera and CockroachdB on Grid'5000 using Enoslib
+Tool to test Keystone Federation over MariaDB on Grid'5000 using Enoslib
 
 Usage:
     juice [-h | --help] [-v | --version] <command> [<args>...]

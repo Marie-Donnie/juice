@@ -31,27 +31,18 @@
         tags: grafana,
         when: enable_monitoring | bool }
 
-- name: CockroachDB master deployment
-  hosts:
-    - database
-  roles:
-    - { role: cockroachdb,
-        tags: cockroachdb,
-        when: db == "cockroachdb" }
-
 - name: MariaDB master deployment
   hosts:
     - database
   roles:
     - { role: mariadb,
-        tags: mariadb,
-        when: db == "mariadb" }
+        tags: mariadb }
 
 - name: Install monitoring agents
   hosts: database
   roles:
     - { role: cadvisor,
-        tags: cadvisor, 
+        tags: cadvisor,
         when: enable_monitoring | bool  }
     - { role: collectd,
         tags: collectd,

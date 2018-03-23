@@ -16,7 +16,6 @@ WALLTIME = '08:20:00'
 # RESERVATION = '2018-03-21 01:15:00'
 RESERVATION = None
 
-DATABASES = [('mariadb', False), ('cockroachdb', False), ('cockroachdb', True)]
 # DATABASES = [('mariadb', False)]
 CLUSTER_SIZES = [3, 25, 45]
 # CLUSTER_SIZES = [2]
@@ -29,7 +28,7 @@ CONF = {
   'enable_monitoring': True,
   'g5k': {'dhcp': True,
           'env_name': 'debian9-x64-nfs',
-          'job_name': 'juice-tests-cockroachdb',
+          'job_name': 'juice-tests',
           'queue': 'testing',
           'walltime': WALLTIME,
           'reservation': RESERVATION,
@@ -95,8 +94,7 @@ def keystone_exp():
     sweeper = ParamSweeper(
       SWEEPER_DIR,
       sweeps=sweep({
-          'db':    DATABASES
-        , 'delay': DELAYS
+          'delay': DELAYS
         , 'db-nodes': CLUSTER_SIZES
       }))
 
@@ -110,15 +108,12 @@ def keystone_exp():
                                    # multiple sweeps in parallels
         conf['g5k']['resources']['machines'][0]['nodes'] = combination['db-nodes']
         conf['tc']['constraints'][0]['delay'] = "%sms" % combination['delay']
-        db = combination['db'][0]
-        db_locality = combination['db'][1]
 
-        xp_name = "%s-%s-%s-" % (db, combination['db-nodes'], combination['delay'])
-        xp_name = xp_name + ("local" if db_locality else "nonlocal")
+        xp_name = "federation-%s-%s-" % (combination['db-nodes'], combination['delay'])
 
         # Let's get it started hun!
-        j.deploy(conf, db, db_locality, xp_name)
-        j.openstack(db)
+        j.deploy(conf, xp_name)
+        j.openstack()
         j.emulate(conf['tc'])
         j.rally(SCENARIOS, "keystone")
         j.backup()

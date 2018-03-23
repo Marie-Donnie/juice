@@ -42,8 +42,6 @@ disable_service q-meta
 disable_service q-svc
 disable_service tempest
 disable_service mysql
-{% if db == 'cockroachdb' %}
-enable_service cockroachdb
-{% elif db == 'mariadb' %}
+#TODO: change service and service name
 enable_service galera
 {% endif %}

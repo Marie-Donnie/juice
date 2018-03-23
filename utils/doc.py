@@ -37,10 +37,3 @@ Usage:
     """
     exit("%r is not a juice command. \n%s" % (kwargs['<command>'],
                                               error_lookup.__doc__))
-
-
-def db_validation(db):
-    databases = ['cockroachdb', 'mariadb']
-    if db not in databases:
-        exit("%s is not an allowed database. Try one of the following: %s"
-             % (db, ', '.join(databases)))

@@ -11,9 +11,6 @@
     login_password: my-secret-pw
     login_host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
     priv: '*.*:ALL,GRANT'
-  when:
-    - db == 'mariadb'
-    - inventory_hostname == dbmaster_node
 
 - name: Removes MariaDB sbtest database for sysbench if present
   mysql_db:
@@ -22,9 +19,6 @@
     login_user: sbtest
     login_password: sbtest
     state: absent
-  when:
-    - db == 'mariadb'
-    - inventory_hostname == dbmaster_node
 
 - name: Create MariaDB sbtest database for sysbench
   mysql_db:
@@ -33,9 +27,6 @@
     login_user: sbtest
     login_password: sbtest
     state: present
-  when:
-    - db == 'mariadb'
-    - inventory_hostname == dbmaster_node
 
 - name: Prepare sysbench on MariaDB
   docker_container:
@@ -43,9 +34,6 @@
     image: "severalnines/sysbench"
     detach: False
     command: sysbench --db-driver=mysql --table-size=1000000 --mysql-host="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}" --mysql-port=3306 --mysql-user=sbtest --mysql-password=sbtest oltp_read_write prepare
-  when:
-    - db == 'mariadb'
-    - inventory_hostname == dbmaster_node
 
 - name: Run sysbench on MariaDB
   docker_container:
@@ -53,51 +41,3 @@
     image: "severalnines/sysbench"
     detach: False
     command: sysbench --db-driver=mysql --table-size=1000000 --mysql-host="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}" --mysql-port=3306 --mysql-user=sbtest --mysql-password=sbtest oltp_read_write run
-  when:
-    - db == 'mariadb'
-    - inventory_hostname == dbmaster_node
-
-
-  # CockroachDB
-
-- name: Removes CockroachDB sbtest database for sysbench if present
-  postgresql_db:
-    name: sbtest
-    login_host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
-    login_user: root
-    port: 26257
-    state: absent
-  when:
-    - db == 'cockroachdb'
-    - inventory_hostname == dbmaster_node
-
-- name: Create CockroachDB sbtest database for sysbench
-  postgresql_db:
-    name: sbtest
-    login_host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
-    login_user: root
-    port: 26257
-    state: present
-  when:
-    - db == 'cockroachdb'
-    - inventory_hostname == dbmaster_node
-
-- name: Start sysbench on CockroachDB
-  docker_container:
-    name: "sysbench"
-    image: "severalnines/sysbench"
-    detach: False
-    command: sysbench --db-driver=pgsql --pgsql-host="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}" --pgsql-port=26257 --pgsql-user=root --table-size=1000000 oltp_read_write prepare
-  when:
-    - db == 'cockroachdb'
-    - inventory_hostname == dbmaster_node
-
-- name: Run sysbench on CockroachDB
-  docker_container:
-    name: "sysbench"
-    image: "severalnines/sysbench"
-    detach: False
-    command: sysbench --db-driver=pgsql --pgsql-host="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}" --pgsql-port=26257 --pgsql-user=root --table-size=1000000 oltp_read_write run
-  when:
-    - db == 'cockroachdb'
-    - inventory_hostname == dbmaster_node
