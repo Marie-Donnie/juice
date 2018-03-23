@@ -40,16 +40,3 @@ g5k:
         site: nancy
 
 enable_monitoring: true
-
-tc:
-  enable: True
-  default_delay: 0ms
-  default_rate: 10gbit
-  groups:
-    - database
-  constraints:
-    - src: database
-      dst: database
-      delay: 0ms
-      rate: 10gbit
-      loss: 0

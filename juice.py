@@ -241,8 +241,6 @@ Emulate network using: {0}
     """
     inventory = env["inventory"]
     roles = env["roles"]
-    # if "tc" in env["config"]:
-    #     tc = env["config"]["tc"]
     logging.info("Emulates using constraints: %s" % tc)
     emulate_network(roles, inventory, tc)
     env["latency"] = tc['constraints'][0]['delay']
