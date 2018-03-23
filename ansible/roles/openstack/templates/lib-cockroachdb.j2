@@ -35,37 +35,6 @@ function recreate_database_cockroachdb {
 
     sudo docker exec -i cockroachdb-{{ inventory_hostname_short }} \
 	   ./cockroach sql --execute "CREATE DATABASE $db ENCODING = 'UTF8'" --insecure
-    {% else %}
-    while true
-    do
-	output=$(sudo docker exec -i cockroachdb-{{ inventory_hostname_short }} \
-			./cockroach sql --insecure \
-			--execute "select * from [SHOW DATABASES] where \"Database\" = 'keystone'" | \
-	           fgrep "row")
-        if [[ "$output" == "# 1 row" ]]
-        then
-	    if [[ $(sudo docker exec -i cockroachdb-{{ inventory_hostname_short }} ./cockroach sql --execute "SHOW TABLES FROM keystone" --insecure | grep 'migrate_version') == 'migrate_version' ]]
-	    then
-		# waiting for the 24th migrations of keystone contract which is supposed to be the last
-		if [[ $(sudo docker exec -i cockroachdb-{{ inventory_hostname_short }} \
-			      ./cockroach sql --insecure \
-			      --execute "select version from keystone.migrate_version where repository_id = 'keystone_contract'" | fgrep "24") == "24" ]]
-		then
-		    break
-		else
-		    echo "Waiting for migrations to finish"
-		    sleep $(( ( RANDOM % 30 )  + 60 ))
-		fi
-	    else
-		echo "Waiting for migrations"
-		sleep 5
-	    fi
-	else
-	    echo "Waiting for database $db to be up"
-	    sleep 5
-	fi
-    done
-
     {% endif %}
 }
 
