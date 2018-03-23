@@ -107,6 +107,7 @@ ENV/
 enos_*/
 current/
 current
+*-*-*-*
 
 # ansible
 *.retry
@@ -115,10 +116,7 @@ current
 tests/
 
 # rally
-
 rally-scenarios.yaml
-
 
 # Sweeper
 sweeper
-
