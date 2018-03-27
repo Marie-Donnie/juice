@@ -41,7 +41,7 @@ from enoslib.api import (run_ansible, generate_inventory,
 from enoslib.task import enostask
 from enoslib.infra.enos_g5k.provider import G5k
 
-from utils.doc import doc, doc_lookup, db_validation
+from utils.doc import doc, doc_lookup
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -91,11 +91,9 @@ Options:
         # Data format error
         sys.exit(65)
 
-    db_validation(db)
-
     g5k(env=xp_name, config=config)
     inventory()
-    prepare(locality=locality)
+    prepare()
 
 
 @doc()
@@ -140,7 +138,7 @@ Configure the resources, requires both g5k and inventory executions
     """
     # Generate inventory
     extra_vars = {
-        "registry": env["config"]["registry"]
+        "registry": env["config"]["registry"],
         # Set monitoring to True by default
         "enable_monitoring": env['config'].get('enable_monitoring', True)
     }

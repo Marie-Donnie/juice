@@ -30,39 +30,10 @@
     volumes:
       - "/opt/local/etc/mysql.conf.d:/etc/mysql/conf.d"
     env:
-      MYSQL_INITDB_SKIP_TZINFO=yes
       MYSQL_ROOT_PASSWORD=my-secret-pw
-    command: --wsrep-new-cluster --wsrep_node_address="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
-  when: inventory_hostname == dbmaster_node
-
-- name: Waiting the MariaDB master to be ready
-  wait_for:
-    host: "{{ hostvars[dbmaster_node]['ansible_' + database_network]['ipv4']['address'] }}"
-    port: 3306
-  when: inventory_hostname == dbmaster_node
-
-- name: Start the MariaDB container
-  docker_container:
-    name: "mariadb-{{ inventory_hostname_short }}"
-    image: "mariadb"
-    detach: True
-    exposed_ports:
-      - 4567
-    published_ports:
-      - "3306:3306"
-      - "4567:4567"
-      - "4567:4567/udp"
-      - "4568:4568"
-      - "4444:4444"
-    volumes:
-      - "/opt/local/etc/mysql.conf.d:/etc/mysql/conf.d"
-      - "/tmp/data:/var/lib/mysql"
-    command: --wsrep_node_address="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
-  when: inventory_hostname != dbmaster_node
 
 
 - name: Waiting for the database to be ready
   wait_for:
     host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
     port: 3306
-  when: inventory_hostname != dbmaster_node
