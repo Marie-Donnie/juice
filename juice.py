@@ -304,6 +304,8 @@ Backup the environment, requires g5k, inventory and prepare executions
         "enos_action": "backup",
         "backup_dir": os.path.join(os.getcwd(), "current/backup/%snodes-%s-%s" % (nb_nodes, db, latency)),
         "tasks_ran" : env["tasks_ran"],
+        # Set monitoring to True by default
+        "enable_monitoring": env['config'].get('enable_monitoring', True)
     }
     run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
     run_ansible(["ansible/stress.yml"], env["inventory"], extra_vars=extra_vars)
