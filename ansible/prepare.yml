@@ -46,5 +46,4 @@
         when: enable_monitoring | bool  }
     - { role: collectd,
         tags: collectd,
-        when: db == "mariadb",
         when: enable_monitoring | bool }

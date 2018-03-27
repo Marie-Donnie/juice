@@ -150,7 +150,7 @@ Configure the resources, requires both g5k and inventory executions
 
 @doc()
 @enostask()
-def stress(db, env=None, **kwargs):
+def stress(env=None, **kwargs):
     """
 usage: juice stress
 
@@ -169,7 +169,7 @@ Launch sysbench tests
 
 @doc()
 @enostask()
-def openstack(db, env=None, **kwargs):
+def openstack(env=None, **kwargs):
     """
 usage: juice openstack
 
@@ -285,6 +285,8 @@ Backup the environment, requires g5k, inventory and prepare executions
         "enos_action": "backup",
         "backup_dir": os.path.join(os.getcwd(), "current/backup/federation-%snodes-%s" % (nb_nodes, latency)),
         "tasks_ran" : env["tasks_ran"],
+        # Set monitoring to True by default
+        "enable_monitoring": env['config'].get('enable_monitoring', True)
     }
     run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
     run_ansible(["ansible/stress.yml"], env["inventory"], extra_vars=extra_vars)

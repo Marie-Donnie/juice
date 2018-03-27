@@ -3,7 +3,6 @@
 - name: Getting the docker logs
   shell: docker logs sysbench > /sysbench_logs.txt
   when:
-    - inventory_hostname == dbmaster_node
     - '"stress" in tasks_ran'
 
 - name: Fetching the logs
@@ -12,5 +11,4 @@
     dest: "{{ backup_dir }}/sysbench_logs.txt"
     flat: yes
   when:
-    - inventory_hostname == dbmaster_node
     - '"stress" in tasks_ran'

@@ -2,9 +2,9 @@ LoadPlugin mysql
 
 # https://collectd.org/documentation/manpages/collectd.conf.5.shtml#plugin_mysql
 <Plugin mysql>
-	<Database galera>
+	<Database mariadb>
 		# Only dbmaster_node because we get informations about the cluster
-		Host "{{ hostvars[dbmaster_node]['ansible_' + hostvars[dbmaster_node]['database_network']]['ipv4']['address'] }}"
+		Host "{{ hostvars[inventory_hostname]['ansible_' + hostvars[inventory_hostname]['database_network']]['ipv4']['address'] }}"
 		Port "3306"
 		User "root"
 		Password "my-secret-pw"

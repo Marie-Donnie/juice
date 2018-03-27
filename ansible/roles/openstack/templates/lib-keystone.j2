@@ -599,7 +599,6 @@ function stop_keystone {
 # - ``KEYSTONE_SERVICE_HOST``
 # - ``KEYSTONE_SERVICE_PORT``
 function bootstrap_keystone {
-    {% if inventory_hostname == dbmaster_node %}
     $KEYSTONE_BIN_DIR/keystone-manage bootstrap \
         --bootstrap-username admin \
         --bootstrap-password "$ADMIN_PASSWORD" \
@@ -608,14 +607,7 @@ function bootstrap_keystone {
         --bootstrap-service-name keystone \
         --bootstrap-region-id "$REGION_NAME" \
         --bootstrap-admin-url "$KEYSTONE_AUTH_URI" \
-        --bootstrap-public-url "$KEYSTONE_SERVICE_URI"
-    {% for item in groups['database'] %}
-    {% if item != inventory_hostname %}
-    openstack --os-identity-api-version=3 endpoint create --region "{{ hostvars[item].inventory_hostname_short }}" keystone admin http://"{{ hostvars[item]['ansible_' + database_network]['ipv4']['address'] }}"/identity
-    openstack --os-identity-api-version=3 endpoint create --region "{{ hostvars[item].inventory_hostname_short }}" keystone public http://"{{ hostvars[item]['ansible_' + database_network]['ipv4']['address'] }}"/identity
-    {% endif %}
-    {% endfor %}
-    {% endif %}
+	--bootstrap-public-url "$KEYSTONE_SERVICE_URI"
     return
 }
 

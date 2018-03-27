@@ -35,7 +35,6 @@
   become: true
   become_user: stack
 
-
 - name: Patching devstack (Add support to mariadb database)
   template:
     src: lib-mariadb.j2
@@ -43,8 +42,6 @@
     owner: stack
   become: true
   become_user: stack
-  when:
-    - db == 'mariadb'
 
 - name: Create the devstack local.conf
   template:

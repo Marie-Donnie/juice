@@ -14,7 +14,6 @@
   template:
     src: mysql.conf.j2
     dest: /etc/collectd/collectd.conf.d/mysql.conf
-  when: db == "mariadb"
 
 # https://github.com/chrisboulton/collectd-python-mysql
 
@@ -27,13 +26,11 @@
   copy:
     src: mysql.py
     dest: /opt/local/collectd/python/mysql.py
-  when: db == "mariadb"
 
 - name: Install the python mysql plugin
   template:
     src: python-mysql.conf.j2
     dest: /etc/collectd/collectd.conf.d/python-mysql.conf
-  when: db == "mariadb"
 
 - name: Restart collectd
   service:

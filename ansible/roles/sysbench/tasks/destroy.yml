@@ -6,4 +6,3 @@
     force_kill: yes
   when:
     - '"stress" in tasks_ran'
-    - inventory_hostname == dbmaster_node
