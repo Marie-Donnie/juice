@@ -2,3 +2,5 @@
 docopt
 # the library it is built on
 git+https://github.com/Marie-Donnie/enoslib.git@master
+# for the analysis of results
+pandas
