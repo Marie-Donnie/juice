@@ -1,4 +1,5 @@
 # From https://github.com/rcherrueau/juice/blob/keystone-experiments/experiments.py
+
 #!/usr/bin/env python
 
 import logging
@@ -91,57 +92,70 @@ SCENARIOS = [
 logging.basicConfig(level=logging.INFO)
 
 
+def setup():
+    j.emulate(CONF['tc'])
+
+
+def teardown():
+    j.emulate(CONF['tc'])
+
+
 def keystone_exp():
     sweeper = ParamSweeper(
-      SWEEPER_DIR,
-      sweeps=sweep({
-          'db':    DATABASES
-        , 'delay': DELAYS
-        , 'db-nodes': CLUSTER_SIZES
-      }))
+        SWEEPER_DIR,
+        sweeps=sweep({
+              'db':    DATABASES
+            , 'delay': DELAYS
+            , 'db-nodes': CLUSTER_SIZES
+        }))
 
     while sweeper.get_remaining():
-      combination = sweeper.get_next()
-      logging.info("Treating combination %s" % pformat(combination))
+        combination = sweeper.get_next()
+        logging.info("Treating combination %s" % pformat(combination))
 
-      try:
-        # Setup parameters
-        conf = copy.deepcopy(CONF) # Make a deepcopy so we can run
-                                   # multiple sweeps in parallels
-        conf['g5k']['resources']['machines'][0]['nodes'] = combination['db-nodes']
-        conf['tc']['constraints'][0]['delay'] = "%sms" % combination['delay']
-        db = combination['db'][0]
-        db_locality = combination['db'][1]
+        try:
+            setup()
 
-        xp_name = "%s-%s-%s-" % (db, combination['db-nodes'], combination['delay'])
-        xp_name = xp_name + ("local" if db_locality else "nonlocal")
+            # Setup parameters
+            conf = copy.deepcopy(CONF)  # Make a deepcopy so we can run
+            # multiple sweeps in parallels
+            conf['g5k']['resources']['machines'][0]['nodes'] = combination['db-nodes']
+            conf['tc']['constraints'][0]['delay'] = "%sms" % combination['delay']
+            db = combination['db'][0]
+            db_locality = combination['db'][1]
 
-        # Let's get it started hun!
-        j.deploy(conf, db, db_locality, xp_name)
-        j.openstack(db)
-        j.emulate(conf['tc'])
-        j.rally(SCENARIOS, "keystone")
-        j.backup()
-        j.destroy()
+            xp_name = "%s-%s-%s-" % (db, combination['db-nodes'], combination['delay'])
+            xp_name = xp_name + ("local" if db_locality else "nonlocal")
 
-        # Everything works well, mark combination as done
-        sweeper.done(combination)
+            # Let's get it started hun!
+            j.deploy(conf, db, db_locality, xp_name)
+            j.openstack(db)
+            j.emulate(conf['tc'])
+            j.rally(SCENARIOS, "keystone")
+            j.backup()
+            j.destroy()
 
-        # Put the latency back at its normal state
-        j.conf['tc']['constraints'][0]['delay'] = '0ms'
-        j.emulate(conf['tc'])
-      except Exception as e:
-        # Oh no, something goes wrong! Mark combination as cancel for
-        # a later retry
-        logging.error("Combination %s Failed with message %s" % (pformat(combination), e))
-        sweeper.cancel(combination)
+            # Everything works well, mark combination as done
+            sweeper.done(combination)
+
+            # Put the latency back at its normal state
+            j.conf['tc']['constraints'][0]['delay'] = '0ms'
+            j.emulate(conf['tc'])
+        except Exception as e:
+            # Oh no, something goes wrong! Mark combination as cancel for
+            # a later retry
+            logging.error("Combination %s Failed with message %s" % (pformat(combination), e))
+            sweeper.cancel(combination)
+
+        finally:
+            teardown()
 
 
 if __name__ == '__main__':
-  # Note: Uncomment to do the initial reservation with the
-  # MAX_CLUSTER_SIZE, and press CTRL+C when you see "waiting for
-  # oargridjob ... to stop". Comment after reservation is done.
-  # j.g5k(config=CONF)
+    # Note: Uncomment to do the initial reservation with the
+    # MAX_CLUSTER_SIZE, and press CTRL+C when you see "waiting for
+    # oargridjob ... to stop". Comment after reservation is done.
+    # j.g5k(config=CONF)
 
-  # Run experiment
-  keystone_exp()
+    # Run experiment
+    keystone_exp()
