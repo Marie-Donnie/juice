@@ -25,6 +25,7 @@
     - docker==2.7.0
     - influxdb
     - psycopg2
+    - flent
 
 - name: Mount /run
   command: mount --make-shared /run
