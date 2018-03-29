@@ -18,11 +18,8 @@ Run 'analysis COMMAND --help' for more information on a command
 import logging
 import re
 import os
-import sys
 import tarfile
 import json
-import time
-import traceback
 
 import pandas as pd
 from docopt import docopt
@@ -51,8 +48,6 @@ def check_directory(folder, **kwargs):
             for directory in directories:
                 if _check_result_dir(directory, folder):
                     results.append(folder + directory)
-            # for path, directories, files in os.walk(directory):
-            #     print("path:%s\ndirectories:%s\nfiles:%s\n" % (path, directories, files))
             return results
         else:
             logging.error("%s is not a directory." % directory)
@@ -61,7 +56,8 @@ def check_directory(folder, **kwargs):
 
 
 def _check_result_dir(directory, folder):
-    pattern = re.compile("(maria|cockroach)(db)-\d{1,3}-\d{1,3}-(local|nonlocal)")
+    pattern = re.compile(("(maria|cockroach)(db)-\d{1,3}"
+                          "-\d{1,3}-(local|nonlocal)"))
     if pattern.match(directory):
         if "backup" in os.listdir(folder + directory):
             return True
@@ -90,9 +86,11 @@ def _find_tar(directory):
                 if folder_pattern.match(f) and os.path.isdir(path_to_f):
                     for tar in os.listdir(path_to_f):
                         path_to_tar = os.path.join(path_to_f, tar)
-                        if tar_pattern.match(tar) and tarfile.is_tarfile(path_to_tar):
+                        if (tar_pattern.match(tar) and
+                            tarfile.is_tarfile(path_to_tar)):
                             print(path_to_tar)
                             return(path_to_tar)
+
 
 def add_results(directory, **kwargs):
     return
