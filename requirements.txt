@@ -4,3 +4,4 @@ docopt
 git+https://github.com/BeyondTheClouds/enoslib.git@master
 # for the analysis of results
 pandas
+matplotlib
