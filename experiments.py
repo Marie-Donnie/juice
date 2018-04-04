@@ -147,8 +147,8 @@ def keystone_exp():
             logging.error("Combination %s Failed with message %s" % (pformat(combination), e))
             sweeper.cancel(combination)
 
-        finally:
-            teardown()
+        # finally:
+        #     teardown()
 
 
 if __name__ == '__main__':
