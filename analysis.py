@@ -77,14 +77,28 @@ def add_results(directory, **kwargs):
     for fil in os.listdir(results):
         file_path = os.path.join(results, fil)
         with open(file_path, "r") as fileopen:
-            json_file = json.loads(fileopen)
-        # pd.read_json(file_path)
-            pd.io.json.json_normalize(json_file)
-            # DICTS.append(json.load(fileopen))
-            # DF.append(pd.DataFrame(DICTS[i]))
+            json_file = json.load(fileopen)
+            # df = pd.io.json.json_normalize(json_file, 'atomic_actions', ['name', 'started_at', 'finished_at'])
+            data = json_file['tasks'][0]['subtasks'][0]['workloads'][0]['data']
+            df = pd.io.json.json_normalize(data, 'atomic_actions', ['duration'])
+            # df = pd.DataFrame(data)
+            # #df.plot(kind='bar')
+            # i += 1
+            # if i == 1:
+            #     print df.head()
+            # jqb = jq.bake('-M')  # disable colorizing
+            # json_data = json.load(fileopen)
+            # rule = """[
+            # {name: .tasks[].subtasks[].workloads[].data[].atomic_actions[].name,
+            # started_at: .tasks[].subtasks[].workloads[].data[].atomic_actions[].started_at,
+            # finished_at: .tasks[].subtasks[].workloads[].data[].atomic_actions[].finished_at
+            # ]"""
+            # out = jqb(rule, _in=json_data).stdout
+            # res = pd.DataFrame(json.loads(out))
+
             i += 1
-            # data = json.loads(fileopen)
-            # pd.io.json.json_normalize(data['results'])
+            if i == 1:
+                print df
     return
 
 
@@ -144,13 +158,16 @@ def _safe_json(members, directory):
         if badpath(finfo.name, base):
             logging.error("%s is blocked (illegal path)" % finfo.name)
         elif finfo.issym() and badlink(finfo, base):
-            logging.error("%s is blocked: Hard link to: %s" % (finfo.name, finfo.linkname))
+            logging.error("%s is blocked: Hard link to: %s" % (finfo.name,
+                                                               finfo.linkname))
         elif finfo.islnk() and badlink(finfo, base):
-            logging.error("%s is blocked: Symlink to: %s" % (finfo.name, finfo.linkname))
+            logging.error("%s is blocked: Symlink to: %s" % (finfo.name,
+                                                             finfo.linkname))
         else:
             if finfo.name.endswith('.json'):
                 finfo.name = re.sub('rally_home/', '', finfo.name)
                 yield finfo
+
 
 
 if __name__ == '__main__':
