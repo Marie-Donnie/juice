@@ -27,6 +27,8 @@ from docopt import docopt
 from utils.doc import doc, doc_lookup
 
 
+pd.options.display.float_format = '{:20,.6f}'.format
+
 DICTS = []
 DF= []
 
@@ -42,6 +44,8 @@ Full run from a directory
     for result_dir in directories:
         unzip_rally(result_dir)
         add_results(result_dir)
+    # treat_results()
+    # print(DF)
 
 
 def check_directory(folder, **kwargs):
@@ -71,6 +75,16 @@ def unzip_rally(directory, **kwargs):
     return
 
 
+def collect_actions(actions):
+    result = []
+    # print(actions)
+    for a in actions:
+        result.append(a)
+        for suba in collect_actions(a['children']):
+            result.append(suba)
+    return result
+
+
 def add_results(directory, **kwargs):
     i = 0
     results = os.path.join(directory, "results")
@@ -78,27 +92,30 @@ def add_results(directory, **kwargs):
         file_path = os.path.join(results, fil)
         with open(file_path, "r") as fileopen:
             json_file = json.load(fileopen)
-            # df = pd.io.json.json_normalize(json_file, 'atomic_actions', ['name', 'started_at', 'finished_at'])
+            task = json_file['tasks'][0]['subtasks'][0]['title']
             data = json_file['tasks'][0]['subtasks'][0]['workloads'][0]['data']
-            df = pd.io.json.json_normalize(data, 'atomic_actions', ['duration'])
-            # df = pd.DataFrame(data)
-            # #df.plot(kind='bar')
-            # i += 1
-            # if i == 1:
-            #     print df.head()
-            # jqb = jq.bake('-M')  # disable colorizing
-            # json_data = json.load(fileopen)
-            # rule = """[
-            # {name: .tasks[].subtasks[].workloads[].data[].atomic_actions[].name,
-            # started_at: .tasks[].subtasks[].workloads[].data[].atomic_actions[].started_at,
-            # finished_at: .tasks[].subtasks[].workloads[].data[].atomic_actions[].finished_at
-            # ]"""
-            # out = jqb(rule, _in=json_data).stdout
-            # res = pd.DataFrame(json.loads(out))
-
+            actions = []
+            for v in data:
+                for a in v['atomic_actions']:
+                    actions.append(a)
+            all_actions = collect_actions(actions)
+            # if task == "KeystoneBasic.get_entities":
+            #     print(all_actions)
+            # df = pd.io.json.json_normalize(data, 'atomic_actions', ['duration'])
+            df = pd.DataFrame(all_actions, columns=['name',
+                                                    'started_at',
+                                                    'finished_at',
+                                                    'failure'])
+            df['duration'] = df['finished_at'].subtract(df['started_at'])
+            groupby_name = df['duration'].groupby(df['name']).describe()
             i += 1
             if i == 1:
-                print df
+                print(directory)
+                print(file_path)
+                print(task)
+                print(groupby_name.head(10))
+                # plt.figure()
+                # groupby_name.plot.box()
     return
 
 
