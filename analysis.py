@@ -99,12 +99,14 @@ def add_results(directory, **kwargs):
             all_actions = _collect_actions(actions)
             df = pd.DataFrame(all_actions, columns=['name',
                                                     'started_at',
-                                                    'finished_at',
-                                                    'failure'])
+                                                    'finished_at'])
             df['duration'] = df['finished_at'].subtract(df['started_at'])
-            groupby_name = df['duration'].groupby(df['name']).describe()
+            groupby_name = df.drop(columns=['finished_at', 'started_at'])
+            # groupby_name = df['duration'].groupby(df['name']).describe()
+            groupby_name = groupby_name.groupby(df['name'])
             dir_name = os.path.basename(directory)
-            DF.append([dir_name, task, groupby_name])
+            DF.append([dir_name, task, groupby_name.describe(include='all')])
+            # DF.append([dir_name, task, groupby_name.head()])
             # i += 1
             # if i == 1:
             #     print(directory)
