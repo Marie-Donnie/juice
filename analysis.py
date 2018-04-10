@@ -44,10 +44,10 @@ Full run from a directory
     for result_dir in directories:
         unzip_rally(result_dir)
         add_results(result_dir)
-    # treat_results()
-    print(DF)
+    # _plot()
+    # print(DF)
     test_graph = DF[0][2]
-    test_graph.plot.box()
+    test_graph.plot.bar()
     plt.show()
 
 
@@ -90,6 +90,7 @@ def _collect_actions(actions):
 
 def add_results(directory, **kwargs):
     results = os.path.join(directory, "results")
+    dir_name = os.path.basename(directory)
     for fil in os.listdir(results):
         file_path = os.path.join(results, fil)
         with open(file_path, "r") as fileopen:
@@ -107,11 +108,24 @@ def add_results(directory, **kwargs):
             df['duration'] = df['finished_at'].subtract(df['started_at'])
             groupby_name = df.drop(columns=['finished_at', 'started_at'])
             # groupby_name = df['duration'].groupby(df['name']).describe()
-            groupby_name = groupby_name.groupby('name')
-            dir_name = os.path.basename(directory)
+            groupby_name = groupby_name.groupby('name').mean()
+            # groupby_name = groupby_name.rename(columns={'duration': dir_name})
             # DF.append([dir_name, task, groupby_name.describe(include='all')])
             DF.append([dir_name, task, groupby_name])
     return
+
+
+def _plot():
+    df_0ms = []
+    df_50ms = []
+    df_150ms = []
+    for result in DF:
+        if '-0-' in result[0]:
+            db = result[0].split('-', 1)[0]
+            result[2].rename(columns={'duration': db})
+            df_0ms.append(result[2])
+    df_0ms.plot.bar()
+    plt.show()
 
 
 def _check_result_dir(directory, folder):
