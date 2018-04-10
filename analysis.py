@@ -22,6 +22,7 @@ import tarfile
 import json
 
 import pandas as pd
+import matplotlib.pyplot as plt
 from docopt import docopt
 
 from utils.doc import doc, doc_lookup
@@ -45,6 +46,9 @@ Full run from a directory
         add_results(result_dir)
     # treat_results()
     print(DF)
+    test_graph = DF[0][2]
+    test_graph.plot.box()
+    plt.show()
 
 
 def check_directory(folder, **kwargs):
@@ -103,18 +107,10 @@ def add_results(directory, **kwargs):
             df['duration'] = df['finished_at'].subtract(df['started_at'])
             groupby_name = df.drop(columns=['finished_at', 'started_at'])
             # groupby_name = df['duration'].groupby(df['name']).describe()
-            groupby_name = groupby_name.groupby(df['name'])
+            groupby_name = groupby_name.groupby('name')
             dir_name = os.path.basename(directory)
-            DF.append([dir_name, task, groupby_name.describe(include='all')])
-            # DF.append([dir_name, task, groupby_name.head()])
-            # i += 1
-            # if i == 1:
-            #     print(directory)
-            #     print(file_path)
-            #     print(task)
-            #     print(groupby_name.head(10))
-            #     plt.figure()
-            #     groupby_name.plot.box()
+            # DF.append([dir_name, task, groupby_name.describe(include='all')])
+            DF.append([dir_name, task, groupby_name])
     return
 
 
