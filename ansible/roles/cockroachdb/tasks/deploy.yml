@@ -21,10 +21,12 @@
       - "/tmp/cockroach-data:/cockroach/cockroach-data"
     command: >
       start --insecure
-      --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
+      --advertise-host="{{ item[0].ipv4.address }}"
       {% if locality %} --locality=region="{{inventory_hostname_short}}"{% endif %}
   when:
     - inventory_hostname == dbmaster_node
+  loop:
+    - "{{ [ hostvars[inventory_hostname]['ansible_'+ database_network] ] }}"
 
 - name: Waiting for the first database to be ready
   wait_for:
@@ -45,11 +47,13 @@
       - "/tmp/cockroach-data:/cockroach/cockroach-data"
     command: >
       start --insecure
-      --join="{{ hostvars[dbmaster_node]['ansible_'+ database_network]['ipv4']['address'] }}"
-      --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
+      --join="{{ hostvars[dbmaster_node]['ansible_'+ database_network].ipv4.address }}"
+      --advertise-host="{{ item[0].ipv4.address }}"
       {% if locality %} --locality=region="{{inventory_hostname_short}}"{% endif %}
   when:
     - inventory_hostname != dbmaster_node
+  loop:
+    - "{{ [ hostvars[inventory_hostname]['ansible_'+ database_network] ] }}"
 
 - name: Waiting for databases to be ready
   wait_for:

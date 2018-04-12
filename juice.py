@@ -29,6 +29,7 @@ import os
 import logging
 import yaml
 import sys
+import time
 
 from docopt import docopt
 import pprint
@@ -96,6 +97,7 @@ Options:
     db_validation(db)
 
     g5k(env=xp_name, config=config)
+    time.sleep(30)
     inventory()
     prepare(db=db, locality=locality)
 

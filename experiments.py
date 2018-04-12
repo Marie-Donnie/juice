@@ -1,5 +1,3 @@
-# From https://github.com/rcherrueau/juice/blob/keystone-experiments/experiments.py
-
 #!/usr/bin/env python
 
 import logging
@@ -9,20 +7,22 @@ from pprint import pformat
 import juice as j
 from execo_engine.sweep import (ParamSweeper, sweep)
 
+# From https://github.com/rcherrueau/juice/blob/keystone-experiments/experiments.py
 
 SWEEPER_DIR = './sweeper'
 
-WALLTIME = '08:20:00'
+WALLTIME = '1:00:00'
 # WALLTIME = '01:40:00'
 # RESERVATION = '2018-03-21 01:15:00'
 RESERVATION = None
 
-DATABASES = [('mariadb', False), ('cockroachdb', False), ('cockroachdb', True)]
+#DATABASES = [('mariadb', False), ('cockroachdb', False), ('cockroachdb', True)]
+DATABASES = [('cockroachdb', False), ('cockroachdb', True)]
 # DATABASES = [('mariadb', False)]
-CLUSTER_SIZES = [3, 25, 45]
-# CLUSTER_SIZES = [2]
-DELAYS = [0, 50, 150]
-# DELAYS = [0]
+# CLUSTER_SIZES = [25]
+CLUSTER_SIZES = [10]
+# DELAYS = [0, 50, 150]
+DELAYS = [0]
 
 MAX_CLUSTER_SIZE = max(CLUSTER_SIZES)
 
@@ -30,7 +30,7 @@ CONF = {
   'enable_monitoring': True,
   'g5k': {'dhcp': True,
           'env_name': 'debian9-x64-nfs',
-          'job_name': 'juice-tests-cockroachdb',
+          'job_name': 'juice-tests',
           'queue': 'testing',
           'walltime': WALLTIME,
           'reservation': RESERVATION,
@@ -114,7 +114,7 @@ def keystone_exp():
         logging.info("Treating combination %s" % pformat(combination))
 
         try:
-            setup()
+            #setup()
 
             # Setup parameters
             conf = copy.deepcopy(CONF)  # Make a deepcopy so we can run
@@ -147,8 +147,8 @@ def keystone_exp():
             logging.error("Combination %s Failed with message %s" % (pformat(combination), e))
             sweeper.cancel(combination)
 
-        # finally:
-        #     teardown()
+        finally:
+            teardown()
 
 
 if __name__ == '__main__':
