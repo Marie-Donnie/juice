@@ -44,11 +44,11 @@ Full run from a directory
     for result_dir in directories:
         unzip_rally(result_dir)
         add_results(result_dir)
-    # _plot()
+    _plot()
     # print(DF)
-    test_graph = DF[0][2]
-    test_graph.plot.bar()
-    plt.show()
+    # test_graph = DF[0][2]
+    # test_graph.plot.bar()
+    # plt.show()
 
 
 def check_directory(folder, **kwargs):
@@ -116,14 +116,23 @@ def add_results(directory, **kwargs):
 
 
 def _plot():
-    df_0ms = []
+    i = 0
+    # df_0ms = pd.DataFrame()
     df_50ms = []
     df_150ms = []
     for result in DF:
         if '-0-' in result[0]:
             db = result[0].split('-', 1)[0]
-            result[2].rename(columns={'duration': db})
-            df_0ms.append(result[2])
+            if i == 0:
+                df_0ms = result[2].rename(columns={'duration': db})
+            # to_add = result[2].rename(columns={'duration': db})
+            # print(to_add)
+            else:
+                df_0ms.add(result[2])
+                print(result[1])
+            # print(result[2].index.tolist())
+            i += 1
+    print(df_0ms)
     df_0ms.plot.bar()
     plt.show()
 
