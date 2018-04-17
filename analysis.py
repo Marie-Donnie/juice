@@ -30,6 +30,21 @@ from utils.doc import doc, doc_lookup
 
 pd.options.display.float_format = '{:20,.6f}'.format
 
+plt.style.use('seaborn-white')
+
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = 'Ubuntu'
+plt.rcParams['font.monospace'] = 'Ubuntu Mono'
+plt.rcParams['font.size'] = 10
+plt.rcParams['axes.labelsize'] = 10
+plt.rcParams['axes.labelweight'] = 'bold'
+plt.rcParams['axes.titlesize'] = 10
+plt.rcParams['xtick.labelsize'] = 6
+plt.rcParams['ytick.labelsize'] = 8
+plt.rcParams['legend.fontsize'] = 10
+plt.rcParams['figure.titlesize'] = 12
+
+
 DF_0 = []
 DF_50 = []
 DF_150 = []
@@ -83,6 +98,10 @@ def unzip_rally(directory, **kwargs):
 def _collect_actions(actions, task, db, nodes):
     result = []
     # print(actions)
+    if db == 'mariadb':
+        db = 'M'
+    elif db == 'cockroachdb':
+        db = 'C'
     for a in actions:
         a.update({'task': task})
         a.update({'db': db})
@@ -100,7 +119,9 @@ def add_results(directory, **kwargs):
         file_path = os.path.join(results, fil)
         with open(file_path, "r") as fileopen:
             json_file = json.load(fileopen)
-            task = json_file['tasks'][0]['subtasks'][0]['title']
+            task = json_file['tasks'][0]['subtasks'][0]['title'].split('.')[1]
+            if (not task in ['authenticate_user_and_validate_token', 'create_add_and_list_user_roles', 'create_and_list_tenants', 'get_entities', 'create_and_update_user', 'create_user_update_password', 'create_user_set_enabled_and_delete', 'create_and_list_users']):
+                continue
             db = dir_name.split('-', 1)[0]
             nodes = dir_name.split('-')[1]
             latency = dir_name.split('-')[2].split('ms')[0]
@@ -118,17 +139,7 @@ def add_results(directory, **kwargs):
                                                     'nodes'])
             df['duration'] = df['finished_at'].subtract(df['started_at'])
             less_is_better = df.drop(columns=['finished_at', 'started_at'])
-            # groupby_name = df['duration'].groupby(df['name']).describe()
-            #groupby_name = less_is_better.groupby(['name', 'task', 'db', 'nodes']).mean()
-
-            # pt = less_is_better[['name', 'task']].pivot_table(index='name',
-            #                                                   columns='duration')
-            table = pd.pivot_table(less_is_better, values='duration', index=['name', 'task', 'db', 'nodes'], columns=['db'])
-            # groupby_name = groupby_name.rename(columns={'duration': dir_name})
-            # DF.append([dir_name, task, groupby_name.describe(include='all')])
-            # DF.append([dir_name, less_is_better])
-            #DF.append(table)
-            # print(DF)
+            table = pd.pivot_table(less_is_better, values='duration', index=['task', 'name', 'db', 'nodes'])
             if latency == '0':
                 DF_0.append(table)
             elif latency == '50':
@@ -140,27 +151,17 @@ def add_results(directory, **kwargs):
 
 def _plot():
     i = 0
-    df_0ms = pd.DataFrame()
-    df_50ms = []
-    df_150ms = []
-    for result in DF_0:
-        print(result.index.tolist())
-        # # if '-0-' in result[0]:
-        # #     db = result[0].split('-', 1)[0]
-        if i == 0:
-            df_0ms = result
-        #     # to_add = result[2].rename(columns={'duration': db})
-        #     # print(to_add)
-        elif i == 1 :
-        #     result.plot.bar(stacked='True', ax=df_0ms)
-            # df_0ms.add(result, level=['task', 'db', 'nodes'])
-            for row in result.loc:
-                df_0ms.loc[-1] = row
-        #     # print(result[2].index.tolist())
-        i += 1
 
-    print(df_0ms)
-    df_0ms.plot.bar(stacked='True')
+    # Concatenate all data frames
+    df = pd.concat(DF_0)
+    # Extract nodes as columns
+    df = df.unstack()
+    # Reorder nodes column in numeric order
+    df = df.reindex_axis([ df.columns[i] for i in [1,0,2] ], axis=1)
+    # Plot with stacked bars
+    ax = df.plot.bar(stacked=True, logy=True, legend=True)
+    plt.tight_layout()
+
     plt.show()
     # print(DF_0)
 
