@@ -30,7 +30,9 @@ from utils.doc import doc, doc_lookup
 
 pd.options.display.float_format = '{:20,.6f}'.format
 
-DF = []
+DF_0 = []
+DF_50 = []
+DF_150 = []
 
 
 @doc()
@@ -78,12 +80,15 @@ def unzip_rally(directory, **kwargs):
     return
 
 
-def _collect_actions(actions):
+def _collect_actions(actions, task, db, nodes):
     result = []
     # print(actions)
     for a in actions:
+        a.update({'task': task})
+        a.update({'db': db})
+        a.update({'nodes': nodes})
         result.append(a)
-        for suba in _collect_actions(a['children']):
+        for suba in _collect_actions(a['children'], task, db, nodes):
             result.append(suba)
     return result
 
@@ -96,45 +101,68 @@ def add_results(directory, **kwargs):
         with open(file_path, "r") as fileopen:
             json_file = json.load(fileopen)
             task = json_file['tasks'][0]['subtasks'][0]['title']
+            db = dir_name.split('-', 1)[0]
+            nodes = dir_name.split('-')[1]
+            latency = dir_name.split('-')[2].split('ms')[0]
             data = json_file['tasks'][0]['subtasks'][0]['workloads'][0]['data']
             actions = []
             for v in data:
                 for a in v['atomic_actions']:
                     actions.append(a)
-            all_actions = _collect_actions(actions)
+            all_actions = _collect_actions(actions, task, db, nodes)
             df = pd.DataFrame(all_actions, columns=['name',
                                                     'started_at',
-                                                    'finished_at'])
+                                                    'finished_at',
+                                                    'task',
+                                                    'db',
+                                                    'nodes'])
             df['duration'] = df['finished_at'].subtract(df['started_at'])
-            groupby_name = df.drop(columns=['finished_at', 'started_at'])
+            less_is_better = df.drop(columns=['finished_at', 'started_at'])
             # groupby_name = df['duration'].groupby(df['name']).describe()
-            groupby_name = groupby_name.groupby('name').mean()
+            #groupby_name = less_is_better.groupby(['name', 'task', 'db', 'nodes']).mean()
+
+            # pt = less_is_better[['name', 'task']].pivot_table(index='name',
+            #                                                   columns='duration')
+            table = pd.pivot_table(less_is_better, values='duration', index=['name', 'task', 'db', 'nodes'], columns=['db'])
             # groupby_name = groupby_name.rename(columns={'duration': dir_name})
             # DF.append([dir_name, task, groupby_name.describe(include='all')])
-            DF.append([dir_name, task, groupby_name])
+            # DF.append([dir_name, less_is_better])
+            #DF.append(table)
+            # print(DF)
+            if latency == '0':
+                DF_0.append(table)
+            elif latency == '50':
+                DF_50.append(table)
+            elif latency == '150':
+                DF_150.append(table)
     return
 
 
 def _plot():
     i = 0
-    # df_0ms = pd.DataFrame()
+    df_0ms = pd.DataFrame()
     df_50ms = []
     df_150ms = []
-    for result in DF:
-        if '-0-' in result[0]:
-            db = result[0].split('-', 1)[0]
-            if i == 0:
-                df_0ms = result[2].rename(columns={'duration': db})
-            # to_add = result[2].rename(columns={'duration': db})
-            # print(to_add)
-            else:
-                df_0ms.add(result[2])
-                print(result[1])
-            # print(result[2].index.tolist())
-            i += 1
+    for result in DF_0:
+        print(result.index.tolist())
+        # # if '-0-' in result[0]:
+        # #     db = result[0].split('-', 1)[0]
+        if i == 0:
+            df_0ms = result
+        #     # to_add = result[2].rename(columns={'duration': db})
+        #     # print(to_add)
+        elif i == 1 :
+        #     result.plot.bar(stacked='True', ax=df_0ms)
+            # df_0ms.add(result, level=['task', 'db', 'nodes'])
+            for row in result.loc:
+                df_0ms.loc[-1] = row
+        #     # print(result[2].index.tolist())
+        i += 1
+
     print(df_0ms)
-    df_0ms.plot.bar()
+    df_0ms.plot.bar(stacked='True')
     plt.show()
+    # print(DF_0)
 
 
 def _check_result_dir(directory, folder):
