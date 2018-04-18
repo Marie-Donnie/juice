@@ -11,7 +11,7 @@
 - name: Start the first cockroachdb node
   docker_container:
     name: "cockroachdb-{{ inventory_hostname_short }}"
-    image: "cockroachdb/cockroach"
+    image: "cockroachdb/cockroach:v1.1.7"
     # hostname: "{{ inventory_hostname }}"
     detach: True
     ports:
@@ -38,7 +38,7 @@
 - name: Start other cockroachdb nodes
   docker_container:
     name: "cockroachdb-{{ inventory_hostname_short }}"
-    image: "cockroachdb/cockroach"
+    image: "cockroachdb/cockroach:v1.1.7"
     detach: True
     ports:
       - 26257:26257
