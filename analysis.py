@@ -51,17 +51,20 @@ DF_150 = []
 
 
 @doc()
-def full_run(directory, **kwargs):
+def full_run(directory, latency, **kwargs):
     """
-usage: analysis full_run (--directory=directory)
+usage: analysis full_run (--directory=directory) [--latency=latency]
 
 Full run from a directory
+
+    --directory=directory    Path to the result directory
+    --latency=latency         The latency for the wanted graph [default: 0]
     """
     directories = check_directory(directory)
     for result_dir in directories:
         unzip_rally(result_dir)
-        add_results(result_dir)
-    _plot()
+        add_results(result_dir, latency)
+    _plot(latency)
     # print(DF)
     # test_graph = DF[0][2]
     # test_graph.plot.bar()
@@ -112,7 +115,7 @@ def _collect_actions(actions, task, db, nodes):
     return result
 
 
-def add_results(directory, **kwargs):
+def add_results(directory, latency, **kwargs):
     results = os.path.join(directory, "results")
     dir_name = os.path.basename(directory)
     for fil in os.listdir(results):
@@ -124,46 +127,51 @@ def add_results(directory, **kwargs):
                 continue
             db = dir_name.split('-', 1)[0]
             nodes = dir_name.split('-')[1]
-            latency = dir_name.split('-')[2].split('ms')[0]
-            data = json_file['tasks'][0]['subtasks'][0]['workloads'][0]['data']
-            actions = []
-            for v in data:
-                for a in v['atomic_actions']:
-                    actions.append(a)
-            all_actions = _collect_actions(actions, task, db, nodes)
-            df = pd.DataFrame(all_actions, columns=['name',
-                                                    'started_at',
-                                                    'finished_at',
-                                                    'task',
-                                                    'db',
-                                                    'nodes'])
-            df['duration'] = df['finished_at'].subtract(df['started_at'])
-            less_is_better = df.drop(columns=['finished_at', 'started_at'])
-            table = pd.pivot_table(less_is_better, values='duration', index=['task', 'name', 'db', 'nodes'])
-            if latency == '0':
-                DF_0.append(table)
-            elif latency == '50':
-                DF_50.append(table)
-            elif latency == '150':
-                DF_150.append(table)
+            laten = dir_name.split('-')[2].split('ms')[0]
+            if laten == latency:
+                data = json_file['tasks'][0]['subtasks'][0]['workloads'][0]['data']
+                actions = []
+                for v in data:
+                    for a in v['atomic_actions']:
+                        actions.append(a)
+                all_actions = _collect_actions(actions, task, db, nodes)
+                df = pd.DataFrame(all_actions, columns=['name',
+                                                        'started_at',
+                                                        'finished_at',
+                                                        'task',
+                                                        'db',
+                                                        'nodes'])
+                df['duration'] = df['finished_at'].subtract(df['started_at'])
+                less_is_better = df.drop(columns=['finished_at', 'started_at'])
+                table = pd.pivot_table(less_is_better, values='duration', index=['task', 'name', 'db', 'nodes'])
+                if laten == '0':
+                    DF_0.append(table)
+                elif laten == '50':
+                    DF_50.append(table)
+                elif laten == '150':
+                    DF_150.append(table)
     return
 
 
-def _plot():
-    i = 0
+def _plot(latency):
+    if latency == '0':
+        df = DF_0
+    elif latency == '50':
+        df = DF_50
+    elif latency == '150':
+        df = DF_150
 
     # Concatenate all data frames
-    df = pd.concat(DF_0)
+    df = pd.concat(df)
     # Extract nodes as columns
     df = df.unstack()
     # Reorder nodes column in numeric order
     df = df.reindex_axis([ df.columns[i] for i in [1,0,2] ], axis=1)
     # Plot with stacked bars
-    ax = df.plot.bar(stacked=True, logy=True, legend=True)
+    ax = df.plot.bar(stacked=True, legend=True)
     plt.tight_layout()
 
     plt.show()
-    # print(DF_0)
 
 
 def _check_result_dir(directory, folder):
