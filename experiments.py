@@ -92,12 +92,28 @@ SCENARIOS = [
 logging.basicConfig(level=logging.INFO)
 
 
-def setup():
+def init():
+  try:
+    j.g5k(config=CONF)
+    j.inventory()
+    j.destroy()
     j.emulate(CONF['tc'])
+  except Exception as e:
+    logging.error(
+        "Setup goes wrong. This is not necessarily a bad news, "
+        "in particular, if it is the first time you run the "
+        "experiment: %s" % e)
 
 
 def teardown():
+  try:
+    j.destroy()
     j.emulate(CONF['tc'])
+  except Exception as e:
+    logging.warning(
+        "Setup goes wrong. This is not necessarily a bad news, "
+        "in particular, if it is the first time you run the "
+        "experiment: %s" % e)
 
 
 def keystone_exp():
@@ -114,10 +130,8 @@ def keystone_exp():
         logging.info("Treating combination %s" % pformat(combination))
 
         try:
-            #setup()
-
             # Setup parameters
-            conf = copy.deepcopy(CONF)  # Make a deepcopy so we can run
+            conf = copy.deepcopy(CONF) # Make a deepcopy so we can run
             # multiple sweeps in parallels
             conf['g5k']['resources']['machines'][0]['nodes'] = combination['db-nodes']
             conf['tc']['constraints'][0]['delay'] = "%sms" % combination['delay']
@@ -133,29 +147,23 @@ def keystone_exp():
             j.emulate(conf['tc'])
             j.rally(SCENARIOS, "keystone")
             j.backup()
-            j.destroy()
 
             # Everything works well, mark combination as done
             sweeper.done(combination)
+            logging.info("End of combination %s" % pformat(combination))
 
-            # Put the latency back at its normal state
-            j.conf['tc']['constraints'][0]['delay'] = '0ms'
-            j.emulate(conf['tc'])
         except Exception as e:
-            # Oh no, something goes wrong! Mark combination as cancel for
-            # a later retry
+          # Oh no, something goes wrong! Mark combination as cancel for
+          # a later retry
             logging.error("Combination %s Failed with message %s" % (pformat(combination), e))
             sweeper.cancel(combination)
 
         finally:
             teardown()
 
-
 if __name__ == '__main__':
-    # Note: Uncomment to do the initial reservation with the
-    # MAX_CLUSTER_SIZE, and press CTRL+C when you see "waiting for
-    # oargridjob ... to stop". Comment after reservation is done.
-    # j.g5k(config=CONF)
+  # Do the initial reservation and boilerplate
+  init()
 
-    # Run experiment
-    keystone_exp()
+  # Run experiment
+  keystone_exp()
