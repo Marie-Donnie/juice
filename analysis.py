@@ -30,25 +30,45 @@ from utils.doc import doc, doc_lookup
 
 pd.options.display.float_format = '{:20,.6f}'.format
 
-DF = []
+plt.style.use('seaborn-white')
+
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = 'Ubuntu'
+plt.rcParams['font.monospace'] = 'Ubuntu Mono'
+plt.rcParams['font.size'] = 10
+plt.rcParams['axes.labelsize'] = 10
+plt.rcParams['axes.labelweight'] = 'bold'
+plt.rcParams['axes.titlesize'] = 10
+plt.rcParams['xtick.labelsize'] = 6
+plt.rcParams['ytick.labelsize'] = 8
+plt.rcParams['legend.fontsize'] = 10
+plt.rcParams['figure.titlesize'] = 12
+
+
+DF_0 = []
+DF_50 = []
+DF_150 = []
 
 
 @doc()
-def full_run(directory, **kwargs):
+def full_run(directory, latency, **kwargs):
     """
-usage: analysis full_run (--directory=directory)
+usage: analysis full_run (--directory=directory) [--latency=latency]
 
 Full run from a directory
+
+    --directory=directory    Path to the result directory
+    --latency=latency         The latency for the wanted graph [default: 0]
     """
     directories = check_directory(directory)
     for result_dir in directories:
         unzip_rally(result_dir)
-        add_results(result_dir)
-    # _plot()
+        add_results(result_dir, latency)
+    _plot(latency)
     # print(DF)
-    test_graph = DF[0][2]
-    test_graph.plot.bar()
-    plt.show()
+    # test_graph = DF[0][2]
+    # test_graph.plot.bar()
+    # plt.show()
 
 
 def check_directory(folder, **kwargs):
@@ -78,53 +98,79 @@ def unzip_rally(directory, **kwargs):
     return
 
 
-def _collect_actions(actions):
+def _collect_actions(actions, task, db, nodes):
     result = []
     # print(actions)
+    if db == 'mariadb':
+        db = 'M'
+    elif db == 'cockroachdb':
+        db = 'C'
     for a in actions:
+        a.update({'task': task})
+        a.update({'db': db})
+        a.update({'nodes': nodes})
         result.append(a)
-        for suba in _collect_actions(a['children']):
+        for suba in _collect_actions(a['children'], task, db, nodes):
             result.append(suba)
     return result
 
 
-def add_results(directory, **kwargs):
+def add_results(directory, latency, **kwargs):
     results = os.path.join(directory, "results")
     dir_name = os.path.basename(directory)
     for fil in os.listdir(results):
         file_path = os.path.join(results, fil)
         with open(file_path, "r") as fileopen:
             json_file = json.load(fileopen)
-            task = json_file['tasks'][0]['subtasks'][0]['title']
-            data = json_file['tasks'][0]['subtasks'][0]['workloads'][0]['data']
-            actions = []
-            for v in data:
-                for a in v['atomic_actions']:
-                    actions.append(a)
-            all_actions = _collect_actions(actions)
-            df = pd.DataFrame(all_actions, columns=['name',
-                                                    'started_at',
-                                                    'finished_at'])
-            df['duration'] = df['finished_at'].subtract(df['started_at'])
-            groupby_name = df.drop(columns=['finished_at', 'started_at'])
-            # groupby_name = df['duration'].groupby(df['name']).describe()
-            groupby_name = groupby_name.groupby('name').mean()
-            # groupby_name = groupby_name.rename(columns={'duration': dir_name})
-            # DF.append([dir_name, task, groupby_name.describe(include='all')])
-            DF.append([dir_name, task, groupby_name])
+            task = json_file['tasks'][0]['subtasks'][0]['title'].split('.')[1]
+            if (not task in ['authenticate_user_and_validate_token', 'create_add_and_list_user_roles', 'create_and_list_tenants', 'get_entities', 'create_and_update_user', 'create_user_update_password', 'create_user_set_enabled_and_delete', 'create_and_list_users']):
+                continue
+            db = dir_name.split('-', 1)[0]
+            nodes = dir_name.split('-')[1]
+            laten = dir_name.split('-')[2].split('ms')[0]
+            if laten == latency:
+                data = json_file['tasks'][0]['subtasks'][0]['workloads'][0]['data']
+                actions = []
+                for v in data:
+                    for a in v['atomic_actions']:
+                        actions.append(a)
+                all_actions = _collect_actions(actions, task, db, nodes)
+                df = pd.DataFrame(all_actions, columns=['name',
+                                                        'started_at',
+                                                        'finished_at',
+                                                        'task',
+                                                        'db',
+                                                        'nodes'])
+                df['duration'] = df['finished_at'].subtract(df['started_at'])
+                less_is_better = df.drop(columns=['finished_at', 'started_at'])
+                table = pd.pivot_table(less_is_better, values='duration', index=['task', 'name', 'db', 'nodes'])
+                if laten == '0':
+                    DF_0.append(table)
+                elif laten == '50':
+                    DF_50.append(table)
+                elif laten == '150':
+                    DF_150.append(table)
     return
 
 
-def _plot():
-    df_0ms = []
-    df_50ms = []
-    df_150ms = []
-    for result in DF:
-        if '-0-' in result[0]:
-            db = result[0].split('-', 1)[0]
-            result[2].rename(columns={'duration': db})
-            df_0ms.append(result[2])
-    df_0ms.plot.bar()
+def _plot(latency):
+    if latency == '0':
+        df = DF_0
+    elif latency == '50':
+        df = DF_50
+    elif latency == '150':
+        df = DF_150
+
+    # Concatenate all data frames
+    df = pd.concat(df)
+    # Extract nodes as columns
+    df = df.unstack()
+    # Reorder nodes column in numeric order
+    df = df.reindex_axis([ df.columns[i] for i in [1,0,2] ], axis=1)
+    # Plot with stacked bars
+    ax = df.plot.bar(stacked=True, legend=True)
+    plt.tight_layout()
+
     plt.show()
 
 
