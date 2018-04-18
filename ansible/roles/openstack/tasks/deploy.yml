@@ -1,15 +1,15 @@
 ---
 
-- name: Removes Cockroach keystone database if present
-  postgresql_db:
-    name: keystone
-    login_host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
-    login_user: root
-    port: 26257
-    state: absent
-  when:
-    - db == 'cockroachdb'
-    - inventory_hostname == dbmaster_node
+# - name: Removes Cockroach keystone database if present
+#   postgresql_db:
+#     name: keystone
+#     login_host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
+#     login_user: root
+#     port: 26257
+#     state: absent
+#   when:
+#     - db == 'cockroachdb'
+#     - inventory_hostname == dbmaster_node
 
 - name: Removes MariaDB keystone database if present
   mysql_db:
@@ -35,6 +35,15 @@
   when:
     - db == 'cockroachdb'
 
+- name: Fixing 'role' as a reserved keyword
+  copy:
+    src: dialect.py
+    dest: /tmp/src/cockroachdb/cockroachdb/sqlalchemy/dialect.py
+
+- name: Fixing 'index "ixu_role_name" is in use as unique constraint'
+  copy:
+    src: cockroach.py
+    dest: /tmp/src/sqlalchemy-migrate/migrate/changeset/databases/cockroach.py
 
 - name: Add stack user
   user:
@@ -49,7 +58,6 @@
     dest: /etc/sudoers.d/stack
     line: "stack ALL=(ALL) NOPASSWD: ALL"
     create: yes
-
 
 - name: Clone Devstack in /opt/stack/devstack
   git:
@@ -90,6 +98,11 @@
     owner: stack
   become: true
   become_user: stack
+
+- name: Patching devstack for pip 10 bug
+  copy:
+    src: cap-pip.txt
+    dest: /opt/stack/devstack/tools/cap-pip.txt
 
 - name: Create the devstack local.conf
   template:
