@@ -179,7 +179,7 @@ def _plot(latency):
 
 def _check_result_dir(directory, folder):
     pattern = re.compile(("(maria|cockroach)(db)-\d{1,3}"
-                          "-\d{1,3}-(local|nonlocal)"))
+                          "-\d{1,3}"))
     if pattern.match(directory):
         if "backup" in os.listdir(folder + directory):
             return True
