@@ -10,13 +10,6 @@
     # python-mysql for collectd
     - python-mysqldb
     - python-pip
-    # - git
-    # - gcc
-    # - python-dev
-
-# - easy_install:
-#     name: pip
-#     state: latest
 
 - name: Install some python bindings
   pip:

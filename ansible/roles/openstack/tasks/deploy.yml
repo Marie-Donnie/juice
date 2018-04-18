@@ -22,8 +22,6 @@
     - db == 'mariadb'
     - inventory_hostname == dbmaster_node
 
-- name: Bug fix (pip 10)
-  command: "pip install pip==9.0.3"
 
 - name: Install CockroachDB SQLAlchemy Dialect + Updated version of sqlalchemy-migrate
   pip:
