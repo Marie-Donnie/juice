@@ -109,9 +109,12 @@ def _collect_actions(actions, task, db, nodes):
         a.update({'task': task})
         a.update({'db': db})
         a.update({'nodes': nodes})
-        result.append(a)
+        # delete_user makes everything ugly
+        if a.get('name') != 'keystone_v3.delete_user':
+            result.append(a)
         for suba in _collect_actions(a['children'], task, db, nodes):
-            result.append(suba)
+            if a.get('name') != 'keystone_v3.delete_user':
+                result.append(suba)
     return result
 
 
