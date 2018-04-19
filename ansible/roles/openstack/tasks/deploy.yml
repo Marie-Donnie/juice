@@ -39,11 +39,15 @@
   copy:
     src: dialect.py
     dest: /tmp/src/cockroachdb/cockroachdb/sqlalchemy/dialect.py
+  when:
+    - db == 'cockroachdb'
 
 - name: Fixing 'index "ixu_role_name" is in use as unique constraint'
   copy:
     src: cockroach.py
     dest: /tmp/src/sqlalchemy-migrate/migrate/changeset/databases/cockroach.py
+  when:
+    - db == 'cockroachdb'
 
 - name: Add stack user
   user:
