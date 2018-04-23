@@ -98,23 +98,22 @@ def unzip_rally(directory, **kwargs):
     return
 
 
-def _collect_actions(actions, task, db, nodes):
+def _collect_actions(actions, scenario, db, nodes):
     result = []
-    # print(actions)
     if db == 'mariadb':
         db = 'M'
     elif db == 'cockroachdb':
         db = 'C'
     for a in actions:
-        a.update({'task': task})
+        a.update({'scenario': scenario})
         a.update({'db': db})
         a.update({'nodes': nodes})
         # delete_user makes everything ugly
-        if a.get('name') != 'keystone_v3.delete_user':
-            result.append(a)
-        for suba in _collect_actions(a['children'], task, db, nodes):
-            if a.get('name') != 'keystone_v3.delete_user':
-                result.append(suba)
+        # if a.get('name') != 'keystone_v3.delete_user':
+        result.append(a)
+        for suba in _collect_actions(a['children'], scenario, db, nodes):
+            # if a.get('name') != 'keystone_v3.delete_user':
+            result.append(suba)
     return result
 
 
@@ -125,8 +124,8 @@ def add_results(directory, latency, **kwargs):
         file_path = os.path.join(results, fil)
         with open(file_path, "r") as fileopen:
             json_file = json.load(fileopen)
-            task = json_file['tasks'][0]['subtasks'][0]['title'].split('.')[1]
-            if (not task in ['authenticate_user_and_validate_token', 'create_add_and_list_user_roles', 'create_and_list_tenants', 'get_entities', 'create_and_update_user', 'create_user_update_password', 'create_user_set_enabled_and_delete', 'create_and_list_users']):
+            scenario = json_file['tasks'][0]['subtasks'][0]['title'].split('.')[1]
+            if (not scenario in ['authenticate_user_and_validate_token', 'create_add_and_list_user_roles', 'create_and_list_tenants', 'get_entities', 'create_and_update_user', 'create_user_update_password', 'create_user_set_enabled_and_delete', 'create_and_list_users']):
                 continue
             db = dir_name.split('-', 1)[0]
             nodes = dir_name.split('-')[1]
@@ -137,16 +136,16 @@ def add_results(directory, latency, **kwargs):
                 for v in data:
                     for a in v['atomic_actions']:
                         actions.append(a)
-                all_actions = _collect_actions(actions, task, db, nodes)
+                all_actions = _collect_actions(actions, scenario, db, nodes)
                 df = pd.DataFrame(all_actions, columns=['name',
                                                         'started_at',
                                                         'finished_at',
-                                                        'task',
+                                                        'scenario',
                                                         'db',
                                                         'nodes'])
                 df['duration'] = df['finished_at'].subtract(df['started_at'])
                 less_is_better = df.drop(columns=['finished_at', 'started_at'])
-                table = pd.pivot_table(less_is_better, values='duration', index=['task', 'name', 'db', 'nodes'])
+                table = pd.pivot_table(less_is_better, values='duration', index=['scenario', 'db', 'nodes', 'name'])
                 if laten == '0':
                     DF_0.append(table)
                 elif laten == '50':
