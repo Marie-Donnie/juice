@@ -53,23 +53,20 @@ DF_150 = []
 @doc()
 def full_run(directory, latency, remove_delete,  **kwargs):
     """
-usage: analysis full_run (--directory=directory) [--latency=latency] [--remove_delete]
+usage: analysis full_run (--directory=directory) [--latency=latency]
+                                                 [--remove_delete]
 
 Full run from a directory
 
     --directory=directory    Path to the result directory
     --latency=latency        The latency for the wanted graph [default: 0]
-    --remove_delete          Remove the delete actions to have more readable graphs
+    --remove_delete          Remove the delete actions from the graphs
     """
     directories = check_directory(directory)
     for result_dir in directories:
         unzip_rally(result_dir)
         add_results(result_dir, latency, remove_delete)
     _plot(latency)
-    # print(DF)
-    # test_graph = DF[0][2]
-    # test_graph.plot.bar()
-    # plt.show()
 
 
 def check_directory(folder, **kwargs):
@@ -132,19 +129,32 @@ def add_results(directory, latency, remove_delete, **kwargs):
         file_path = os.path.join(results, fil)
         with open(file_path, "r") as fileopen:
             json_file = json.load(fileopen)
-            scenario = json_file['tasks'][0]['subtasks'][0]['title'].split('.')[1]
-            if (not scenario in ['authenticate_user_and_validate_token', 'create_add_and_list_user_roles', 'create_and_list_tenants', 'get_entities', 'create_and_update_user', 'create_user_update_password', 'create_user_set_enabled_and_delete', 'create_and_list_users']):
+            subtask = json_file['tasks'][0]['subtasks'][0]
+            scenario = subtask['title'].split('.')[1]
+            key_scenarios = ['authenticate_user_and_validate_token',
+                             'create_add_and_list_user_roles',
+                             'create_and_list_tenants',
+                             'get_entities',
+                             'create_and_update_user',
+                             'create_user_update_password',
+                             'create_user_set_enabled_and_delete',
+                             'create_and_list_users']
+            if (scenario not in key_scenarios):
                 continue
             db = dir_name.split('-', 1)[0]
             nodes = dir_name.split('-')[1]
             laten = dir_name.split('-')[2].split('ms')[0]
             if laten == latency:
-                data = json_file['tasks'][0]['subtasks'][0]['workloads'][0]['data']
+                data = subtask['workloads'][0]['data']
                 actions = []
                 for v in data:
                     for a in v['atomic_actions']:
                         actions.append(a)
-                all_actions = _collect_actions(actions, scenario, db, nodes, remove_delete)
+                all_actions = _collect_actions(actions,
+                                               scenario,
+                                               db,
+                                               nodes,
+                                               remove_delete)
                 df = pd.DataFrame(all_actions, columns=['name',
                                                         'started_at',
                                                         'finished_at',
@@ -152,8 +162,14 @@ def add_results(directory, latency, remove_delete, **kwargs):
                                                         'db',
                                                         'nodes'])
                 df['duration'] = df['finished_at'].subtract(df['started_at'])
-                less_is_better = df.drop(columns=['finished_at', 'started_at'])
-                table = pd.pivot_table(less_is_better, values='duration', index=['scenario', 'db', 'nodes', 'name'])
+                less_is_better = df.drop(columns=['finished_at',
+                                                  'started_at'])
+                table = pd.pivot_table(less_is_better,
+                                       values='duration',
+                                       index=['scenario',
+                                              'db',
+                                              'nodes',
+                                              'name'])
                 if laten == '0':
                     DF_0.append(table)
                 elif laten == '50':
@@ -180,7 +196,7 @@ def _plot(latency):
     df = df.rename(columns=lambda x: x.replace('keystone_v3.', ''))
 
     # Plot with stacked bars
-    ax = df.plot.bar(stacked=True, legend=True)
+    df.plot.bar(stacked=True, legend=True)
     plt.tight_layout()
 
     plt.show()
