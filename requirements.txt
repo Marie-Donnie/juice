@@ -5,3 +5,7 @@ git+https://github.com/BeyondTheClouds/enoslib.git@master
 # for the analysis of results
 pandas
 matplotlib
+
+# For read/write ratio experiment
+PyMySQL # PyMySQL is pure python and those can be installed on the
+        # frontend
