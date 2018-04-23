@@ -51,19 +51,20 @@ DF_150 = []
 
 
 @doc()
-def full_run(directory, latency, **kwargs):
+def full_run(directory, latency, remove_delete,  **kwargs):
     """
-usage: analysis full_run (--directory=directory) [--latency=latency]
+usage: analysis full_run (--directory=directory) [--latency=latency] [--remove_delete]
 
 Full run from a directory
 
     --directory=directory    Path to the result directory
-    --latency=latency         The latency for the wanted graph [default: 0]
+    --latency=latency        The latency for the wanted graph [default: 0]
+    --remove_delete          Remove the delete actions to have more readable graphs
     """
     directories = check_directory(directory)
     for result_dir in directories:
         unzip_rally(result_dir)
-        add_results(result_dir, latency)
+        add_results(result_dir, latency, remove_delete)
     _plot(latency)
     # print(DF)
     # test_graph = DF[0][2]
@@ -98,7 +99,7 @@ def unzip_rally(directory, **kwargs):
     return
 
 
-def _collect_actions(actions, scenario, db, nodes):
+def _collect_actions(actions, scenario, db, nodes, remove_delete):
     result = []
     if db == 'mariadb':
         db = 'M'
@@ -108,16 +109,23 @@ def _collect_actions(actions, scenario, db, nodes):
         a.update({'scenario': scenario})
         a.update({'db': db})
         a.update({'nodes': nodes})
-        # delete_user makes everything ugly
-        # if a.get('name') != 'keystone_v3.delete_user':
-        result.append(a)
-        for suba in _collect_actions(a['children'], scenario, db, nodes):
-            # if a.get('name') != 'keystone_v3.delete_user':
-            result.append(suba)
+        if remove_delete:
+            # delete_user makes everything ugly
+            if a.get('name') != 'keystone_v3.delete_user':
+                result.append(a)
+            for suba in _collect_actions(a['children'], scenario,
+                                         db, nodes, remove_delete):
+                if a.get('name') != 'keystone_v3.delete_user':
+                    result.append(suba)
+        else:
+            result.append(a)
+            for suba in _collect_actions(a['children'], scenario,
+                                         db, nodes, remove_delete):
+                result.append(suba)
     return result
 
 
-def add_results(directory, latency, **kwargs):
+def add_results(directory, latency, remove_delete, **kwargs):
     results = os.path.join(directory, "results")
     dir_name = os.path.basename(directory)
     for fil in os.listdir(results):
@@ -136,7 +144,7 @@ def add_results(directory, latency, **kwargs):
                 for v in data:
                     for a in v['atomic_actions']:
                         actions.append(a)
-                all_actions = _collect_actions(actions, scenario, db, nodes)
+                all_actions = _collect_actions(actions, scenario, db, nodes, remove_delete)
                 df = pd.DataFrame(all_actions, columns=['name',
                                                         'started_at',
                                                         'finished_at',
@@ -170,6 +178,7 @@ def _plot(latency):
     df = df.unstack()
     df = df.reindex(pd.Index(['3','25','45'], name='nodes'), level=2)
     df = df.rename(columns=lambda x: x.replace('keystone_v3.', ''))
+
     # Plot with stacked bars
     ax = df.plot.bar(stacked=True, legend=True)
     plt.tight_layout()
