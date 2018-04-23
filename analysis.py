@@ -192,7 +192,10 @@ def _plot(latency):
 
     # Extract nodes as columns
     df = df.unstack()
-    df = df.reindex(pd.Index(['3','25','45'], name='nodes'), level=2)
+
+    # Re-order by nodes (else the order is '25' '3' '45' lexicographically)
+    df = df.reindex(pd.Index(['3', '25', '45'], name='nodes'), level=2)
+
     df = df.rename(columns=lambda x: x.replace('keystone_v3.', ''))
 
     # Plot with stacked bars
@@ -267,7 +270,6 @@ def _safe_json(members, directory):
             if finfo.name.endswith('.json'):
                 finfo.name = re.sub('rally_home/', '', finfo.name)
                 yield finfo
-
 
 
 if __name__ == '__main__':
