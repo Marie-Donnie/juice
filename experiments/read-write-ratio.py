@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+sys.path.insert(0, '..')  # Give me an access to juice
 
 import logging
 import os
@@ -12,7 +13,6 @@ import yaml
 import juice as j
 
 
-sys.path.insert(0, '..')  # Give me an access to juice
 
 # This experiment runs Keystone rally scenarios referred in
 # `SCENARIOS` and gives the database reads/write ratio for each. Note
