@@ -120,3 +120,6 @@ rally-scenarios.yaml
 
 # Sweeper
 sweeper
+
+# conf
+conf.yaml
