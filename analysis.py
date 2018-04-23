@@ -165,10 +165,11 @@ def _plot(latency):
 
     # Concatenate all data frames
     df = pd.concat(df)
+
     # Extract nodes as columns
     df = df.unstack()
-    # Reorder nodes column in numeric order
-    df = df.reindex_axis([ df.columns[i] for i in [1,0,2] ], axis=1)
+    df = df.reindex(pd.Index(['3','25','45'], name='nodes'), level=2)
+    df = df.rename(columns=lambda x: x.replace('keystone_v3.', ''))
     # Plot with stacked bars
     ax = df.plot.bar(stacked=True, legend=True)
     plt.tight_layout()
