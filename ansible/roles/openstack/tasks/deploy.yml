@@ -22,30 +22,13 @@
     - db == 'mariadb'
     - inventory_hostname == dbmaster_node
 
-- name: Bug fix (pip 10)
-  command: "pip install pip==9.0.3"
-
 - name: Install CockroachDB SQLAlchemy Dialect + Updated version of sqlalchemy-migrate
   pip:
     name: "{{item}}"
     editable: true # Doesn't work (https://github.com/ansible/ansible/issues/8355)
   with_items:
     - git+https://github.com/cockroachdb/cockroachdb-python.git#egg=cockroachdb
-    - git+https://github.com/Marie-Donnie/sqlalchemy-migrate.git@cockroachdb/pike#egg=sqlalchemy-migrate
-  when:
-    - db == 'cockroachdb'
-
-- name: Fixing 'role' as a reserved keyword
-  copy:
-    src: dialect.py
-    dest: /tmp/src/cockroachdb/cockroachdb/sqlalchemy/dialect.py
-  when:
-    - db == 'cockroachdb'
-
-- name: Fixing 'index "ixu_role_name" is in use as unique constraint'
-  copy:
-    src: cockroach.py
-    dest: /tmp/src/sqlalchemy-migrate/migrate/changeset/databases/cockroach.py
+    - git+https://github.com/rcherrueau/sqlalchemy-migrate.git@cockroachdb/pike#egg=sqlalchemy-migrate
   when:
     - db == 'cockroachdb'
 
@@ -103,11 +86,6 @@
   become: true
   become_user: stack
 
-- name: Patching devstack for pip 10 bug
-  copy:
-    src: cap-pip.txt
-    dest: /opt/stack/devstack/tools/cap-pip.txt
-
 - name: Create the devstack local.conf
   template:
     src: local.conf.j2
@@ -115,7 +93,6 @@
     owner: stack
   become: true
   become_user: stack
-
 
 - name: Clear Devstack
   shell: /opt/stack/devstack/unstack.sh &> /tmp/stack-logs
