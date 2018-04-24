@@ -1,15 +1,15 @@
 ---
 
-- name: Removes Cockroach keystone database if present
-  postgresql_db:
-    name: keystone
-    login_host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
-    login_user: root
-    port: 26257
-    state: absent
-  when:
-    - db == 'cockroachdb'
-    - inventory_hostname == dbmaster_node
+# - name: Removes Cockroach keystone database if present
+#   postgresql_db:
+#     name: keystone
+#     login_host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
+#     login_user: root
+#     port: 26257
+#     state: absent
+#   when:
+#     - db == 'cockroachdb'
+#     - inventory_hostname == dbmaster_node
 
 - name: Removes MariaDB keystone database if present
   mysql_db:
@@ -22,17 +22,15 @@
     - db == 'mariadb'
     - inventory_hostname == dbmaster_node
 
-
 - name: Install CockroachDB SQLAlchemy Dialect + Updated version of sqlalchemy-migrate
   pip:
     name: "{{item}}"
     editable: true # Doesn't work (https://github.com/ansible/ansible/issues/8355)
   with_items:
     - git+https://github.com/cockroachdb/cockroachdb-python.git#egg=cockroachdb
-    - git+https://github.com/Marie-Donnie/sqlalchemy-migrate.git@cockroachdb/pike#egg=sqlalchemy-migrate
+    - git+https://github.com/rcherrueau/sqlalchemy-migrate.git@cockroachdb/pike#egg=sqlalchemy-migrate
   when:
     - db == 'cockroachdb'
-
 
 - name: Add stack user
   user:
@@ -47,7 +45,6 @@
     dest: /etc/sudoers.d/stack
     line: "stack ALL=(ALL) NOPASSWD: ALL"
     create: yes
-
 
 - name: Clone Devstack in /opt/stack/devstack
   git:
@@ -96,7 +93,6 @@
     owner: stack
   become: true
   become_user: stack
-
 
 - name: Clear Devstack
   shell: /opt/stack/devstack/unstack.sh &> /tmp/stack-logs

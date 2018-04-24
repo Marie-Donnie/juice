@@ -1,6 +1,6 @@
 dbmaster_node: "{{ groups['database'][0] }}"
 
-rally_node: "{{ groups['database'][1] }}"
+rally_node: "{{ groups['database'][0] }}"
 
 influxdb_node: "{{ groups['control'][0] }}"
 
