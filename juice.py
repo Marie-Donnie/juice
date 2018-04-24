@@ -51,6 +51,8 @@ DEFAULT_CONF = os.path.join(DEFAULT_CONF, "conf.yaml")
 
 SYMLINK_NAME = os.path.abspath(os.path.join(os.getcwd(), 'current'))
 
+JUICE_PATH = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+
 tc = {
     "enable": True,
     "default_delay": "0ms",
@@ -157,7 +159,7 @@ Configure the resources, requires both g5k and inventory executions
     env["db"] = db
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
-    run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")], env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('prepare')
 
 
@@ -201,7 +203,7 @@ Launch OpenStack
     }
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
-    run_ansible(["ansible/openstack.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")], env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('openstack')
 
 
@@ -229,7 +231,7 @@ Benchmark the Openstack
 
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
-    run_ansible(["ansible/rally.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")], env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('rally')
 
 
@@ -309,10 +311,10 @@ Backup the environment, requires g5k, inventory and prepare executions
         # Set monitoring to True by default
         "enable_monitoring": env['config'].get('enable_monitoring', True)
     }
-    run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
-    run_ansible(["ansible/stress.yml"], env["inventory"], extra_vars=extra_vars)
-    run_ansible(["ansible/openstack.yml"], env["inventory"], extra_vars=extra_vars)
-    run_ansible(["ansible/rally.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/stress.yml")], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")], env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('backup')
 
 
@@ -334,10 +336,10 @@ and inventory executions
         # Set monitoring to True by default
         "enable_monitoring": env['config'].get('enable_monitoring', True)
     })
-    run_ansible(["ansible/prepare.yml"], env["inventory"], extra_vars=extra_vars)
-    run_ansible(["ansible/stress.yml"], env["inventory"], extra_vars=extra_vars)
-    run_ansible(["ansible/openstack.yml"], env["inventory"], extra_vars=extra_vars)
-    run_ansible(["ansible/rally.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/stress.yml")], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")], env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('destroy')
 
 

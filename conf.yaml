@@ -1,5 +1,6 @@
 registry:
   type: none
+
 g5k:
   # reservation: "2018-03-12 19:00:01"
   walltime: "09:00:00"
@@ -15,9 +16,9 @@ g5k:
           - openstack
           - rally
         cluster: grisou
-        nodes: 10
-        primary_network: n2
-        secondary_networks: [n1]
+        nodes: 2
+        primary_network: n1
+        secondary_networks: [n2]
       - roles:
           - control
           # - influxdb
@@ -25,18 +26,18 @@ g5k:
           # - chrony-server
         cluster: grisou
         nodes: 1
-        primary_network: n2
+        primary_network: n1
         secondary_networks: []
     networks:
       - id: n1
         roles:
-          - database_network
-        type: kavlan
+          - control_network
+        type: prod
         site: nancy
       - id: n2
         roles:
-          - control_network
-        type: prod
+          - database_network
+        type: kavlan
         site: nancy
 
 enable_monitoring: true

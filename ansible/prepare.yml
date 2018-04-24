@@ -55,5 +55,4 @@
         when: enable_monitoring | bool  }
     - { role: collectd,
         tags: collectd,
-        when: db == "mariadb",
-        when: enable_monitoring | bool }
+        when: (db == "mariadb") and (enable_monitoring | bool) }

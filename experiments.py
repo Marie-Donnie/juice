@@ -1,28 +1,28 @@
 #!/usr/bin/env python
 
-import logging
 import copy
+import logging
+import os
 from pprint import pformat
 
 import juice as j
 from execo_engine.sweep import (ParamSweeper, sweep)
 
-# From https://github.com/rcherrueau/juice/blob/keystone-experiments/experiments.py
+SWEEPER_DIR = os.path.join(os.getenv('HOME'), 'juice-sweeper')
 
-SWEEPER_DIR = './sweeper'
-
-WALLTIME = '1:00:00'
-# WALLTIME = '01:40:00'
-# RESERVATION = '2018-03-21 01:15:00'
+JOB_NAME = 'juice-tests-croach2'
+WALLTIME = '4:18:00'
+# WALLTIME = '44:55:00'
+# WALLTIME = '13:59:58'
 RESERVATION = None
+# RESERVATION = '2018-03-21 01:15:00'
 
-#DATABASES = [('mariadb', False), ('cockroachdb', False), ('cockroachdb', True)]
-DATABASES = [('cockroachdb', False), ('cockroachdb', True)]
-# DATABASES = [('mariadb', False)]
-# CLUSTER_SIZES = [25]
-CLUSTER_SIZES = [10]
-# DELAYS = [0, 50, 150]
-DELAYS = [0]
+DATABASES = ['cockroachdb']
+# DATABASES = ['mariadb', 'cockroachdb']
+CLUSTER_SIZES = [3]
+# CLUSTER_SIZES = [3, 25, 45, 100]
+DELAYS = [0, 50, 150]
+# DELAYS = [0]
 
 MAX_CLUSTER_SIZE = max(CLUSTER_SIZES)
 
@@ -30,11 +30,11 @@ CONF = {
   'enable_monitoring': True,
   'g5k': {'dhcp': True,
           'env_name': 'debian9-x64-nfs',
-          'job_name': 'juice-tests',
-          'queue': 'testing',
+          'job_name': JOB_NAME,
+          # 'queue': 'testing',
           'walltime': WALLTIME,
           'reservation': RESERVATION,
-          'resources': {'machines': [{'cluster': 'ecotype',
+          'resources': {'machines': [{'cluster': 'grisou',
                                       'nodes': MAX_CLUSTER_SIZE,
                                       'roles': ['chrony',
                                                 'database',
@@ -43,18 +43,18 @@ CONF = {
                                                 'rally'],
                                       'primary_network': 'n1',
                                       'secondary_networks': ['n2']},
-                                     {'cluster': 'ecotype',
+                                     {'cluster': 'grisou',
                                       'nodes': 1,
                                       'roles': ['registry', 'control'],
                                       'primary_network': 'n1',
                                       'secondary_networks': []}],
                         'networks': [{'id': 'n1',
                                       'roles': ['control_network'],
-                                      'site': 'nantes',
+                                      'site': 'nancy',
                                       'type': 'prod'},
                                       {'id': 'n2',
                                       'roles': ['database_network'],
-                                      'site': 'nantes',
+                                      'site': 'nancy',
                                       'type': 'kavlan'},
                                      ]}},
   'registry': {'ceph': True,
@@ -131,18 +131,16 @@ def keystone_exp():
 
         try:
             # Setup parameters
-            conf = copy.deepcopy(CONF) # Make a deepcopy so we can run
-            # multiple sweeps in parallels
+            conf = copy.deepcopy(CONF)  # Make a deepcopy so we can run
+                                        # multiple sweeps in parallels
             conf['g5k']['resources']['machines'][0]['nodes'] = combination['db-nodes']
             conf['tc']['constraints'][0]['delay'] = "%sms" % combination['delay']
-            db = combination['db'][0]
-            db_locality = combination['db'][1]
-
-            xp_name = "%s-%s-%s-" % (db, combination['db-nodes'], combination['delay'])
-            xp_name = xp_name + ("local" if db_locality else "nonlocal")
+            db = combination['db']
+            locality=False
+            xp_name = "%s-%s-%s" % (db, combination['db-nodes'], combination['delay'])
 
             # Let's get it started hun!
-            j.deploy(conf, db, db_locality, xp_name)
+            j.deploy(conf, db, locality, xp_name)
             j.openstack(db)
             j.emulate(conf['tc'])
             j.rally(SCENARIOS, "keystone")
@@ -162,8 +160,8 @@ def keystone_exp():
             teardown()
 
 if __name__ == '__main__':
-  # Do the initial reservation and boilerplate
-  init()
+    # Do the initial reservation and boilerplate
+    init()
 
-  # Run experiment
-  keystone_exp()
+    # Run experiment
+    keystone_exp()
