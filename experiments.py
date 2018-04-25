@@ -3,6 +3,7 @@
 import copy
 import logging
 import os
+import math
 from pprint import pformat
 
 import juice as j
@@ -10,82 +11,86 @@ from execo_engine.sweep import (ParamSweeper, sweep)
 
 SWEEPER_DIR = os.path.join(os.getenv('HOME'), 'juice-sweeper')
 
-JOB_NAME = 'juice-tests-croach2'
-WALLTIME = '4:18:00'
+JOB_NAME = 'test'
+# WALLTIME = '4:18:00'
 # WALLTIME = '44:55:00'
-# WALLTIME = '13:59:58'
+WALLTIME = '1:15:00'
 RESERVATION = None
-# RESERVATION = '2018-03-21 01:15:00'
+# RESERVATION = '2018-04-25 19:00:01'
 
-DATABASES = ['cockroachdb']
-# DATABASES = ['mariadb', 'cockroachdb']
-CLUSTER_SIZES = [3]
+# DATABASES = ['cockroachdb']
+DATABASES = ['mariadb', 'cockroachdb']
+CLUSTER_SIZES = [3, 10]
 # CLUSTER_SIZES = [3, 25, 45, 100]
 DELAYS = [0, 50, 150]
 # DELAYS = [0]
 
+CLUSTER = 'ecotype'
+SITE = 'nantes'
+
 MAX_CLUSTER_SIZE = max(CLUSTER_SIZES)
 
+
 CONF = {
-  'enable_monitoring': True,
-  'g5k': {'dhcp': True,
-          'env_name': 'debian9-x64-nfs',
-          'job_name': JOB_NAME,
-          # 'queue': 'testing',
-          'walltime': WALLTIME,
-          'reservation': RESERVATION,
-          'resources': {'machines': [{'cluster': 'grisou',
-                                      'nodes': MAX_CLUSTER_SIZE,
-                                      'roles': ['chrony',
-                                                'database',
-                                                'sysbench',
-                                                'openstack',
-                                                'rally'],
-                                      'primary_network': 'n1',
-                                      'secondary_networks': ['n2']},
-                                     {'cluster': 'grisou',
-                                      'nodes': 1,
-                                      'roles': ['registry', 'control'],
-                                      'primary_network': 'n1',
-                                      'secondary_networks': []}],
-                        'networks': [{'id': 'n1',
-                                      'roles': ['control_network'],
-                                      'site': 'nancy',
-                                      'type': 'prod'},
-                                      {'id': 'n2',
-                                      'roles': ['database_network'],
-                                      'site': 'nancy',
-                                      'type': 'kavlan'},
-                                     ]}},
-  'registry': {'ceph': True,
-               'ceph_id': 'discovery',
-               'ceph_keyring': '/home/discovery/.ceph/ceph.client.discovery.keyring',
-               'ceph_mon_host': ['ceph0.rennes.grid5000.fr',
-                                 'ceph1.rennes.grid5000.fr',
-                                 'ceph2.rennes.grid5000.fr'],
-               'ceph_rbd': 'discovery_kolla_registry/datas',
-               'type': 'none'},
-  'tc': {'constraints': [{'delay': '0ms',
-                          'src': 'database',
-                          'dst': 'database',
-                          'loss': 0,
-                          'rate': '10gbit',
-                          "network": "database_network"}],
-         'default_delay': '0ms',
-         'default_rate': '10gbit',
-         'enable': True,
-         'groups': ['database']}
+    'enable_monitoring': True,
+    'g5k': {'dhcp': True,
+            'env_name': 'debian9-x64-nfs',
+            'job_name': JOB_NAME,
+            # 'queue': 'testing',
+            'walltime': WALLTIME,
+            'reservation': RESERVATION,
+            'resources': {'machines': [{'cluster': CLUSTER,
+                                        'nodes': MAX_CLUSTER_SIZE,
+                                        'roles': ['chrony',
+                                                  'database',
+                                                  'sysbench',
+                                                  'openstack',
+                                                  'rally'],
+                                        'primary_network': 'n0',
+                                        'secondary_networks': ['n1']},
+                                       {'cluster': CLUSTER,
+                                        'nodes': 1,
+                                        'roles': ['registry', 'control'],
+                                        'primary_network': 'n0',
+                                        'secondary_networks': []}],
+                          'networks': [{'id': 'n0',
+                                        'roles': ['control_network'],
+                                        'site': SITE,
+                                        'type': 'prod'},
+                                       {'id': 'n1',
+                                        'roles': ['database_network'],
+                                        'site': SITE,
+                                        'type': 'kavlan'},
+                                       ]}},
+    'registry': {'ceph': True,
+                 'ceph_id': 'discovery',
+                 'ceph_keyring': '/home/discovery/.ceph/ceph.client.discovery.keyring',
+                 'ceph_mon_host': ['ceph0.rennes.grid5000.fr',
+                                   'ceph1.rennes.grid5000.fr',
+                                   'ceph2.rennes.grid5000.fr'],
+                 'ceph_rbd': 'discovery_kolla_registry/datas',
+                 'type': 'none'},
+    'tc': {'constraints': [{'delay': '0ms',
+                            'src': 'database',
+                            'dst': 'database',
+                            'loss': 0,
+                            'rate': '10gbit',
+                            "network": "database_network"}],
+           'default_delay': '0ms',
+           'default_rate': '10gbit',
+           'enable': True,
+           'groups': ['database']}
 }
 
 SCENARIOS = [
-    "keystone/authenticate-user-and-validate-token.yaml"
-  , "keystone/create-add-and-list-user-roles.yaml"
-  , "keystone/create-and-list-tenants.yaml"
-  , "keystone/get-entities.yaml"
-  , "keystone/create-and-update-user.yaml"
-  , "keystone/create-user-update-password.yaml"
-  , "keystone/create-user-set-enabled-and-delete.yaml"
-  , "keystone/create-and-list-users.yaml"
+      "keystone/authenticate-user-and-validate-token.yaml"
+    , "keystone/create-add-and-list-user-roles.yaml"
+    , "keystone/create-and-list-tenants.yaml"
+    , "keystone/get-entities.yaml"
+    , "keystone/create-and-update-user.yaml"
+    , "keystone/create-user-update-password.yaml"
+    , "keystone/create-user-set-enabled-and-delete.yaml"
+    , "keystone/create-and-list-users.yaml"
 ]
 
 
@@ -93,27 +98,67 @@ logging.basicConfig(level=logging.INFO)
 
 
 def init():
-  try:
-    j.g5k(config=CONF)
-    j.inventory()
-    j.destroy()
-    j.emulate(CONF['tc'])
-  except Exception as e:
-    logging.error(
-        "Setup goes wrong. This is not necessarily a bad news, "
-        "in particular, if it is the first time you run the "
-        "experiment: %s" % e)
+    try:
+        j.g5k(config=CONF)
+        j.inventory()
+        j.destroy()
+        j.emulate(CONF['tc'])
+    except Exception as e:
+        logging.error(
+            "Setup goes wrong. This is not necessarily a bad news, "
+            "in particular, if it is the first time you run the "
+            "experiment: %s" % e)
 
 
 def teardown():
-  try:
-    j.destroy()
-    j.emulate(CONF['tc'])
-  except Exception as e:
-    logging.warning(
-        "Setup goes wrong. This is not necessarily a bad news, "
-        "in particular, if it is the first time you run the "
-        "experiment: %s" % e)
+    try:
+        j.destroy()
+        j.emulate(CONF['tc'])
+    except Exception as e:
+        logging.warning(
+            "Setup goes wrong. This is not necessarily a bad news, "
+            "in particular, if it is the first time you run the "
+            "experiment: %s" % e)
+
+
+def conf_group(conf, combination):
+    nb_nodes = combination['db-nodes']
+    groups = range(int(math.ceil(nb_nodes/5)))
+    machines = [{'cluster': 'ecotype',
+                 'nodes': 1,
+                 'roles': ['registry', 'control'],
+                 'primary_network': 'n0',
+                 'secondary_networks': ['n1']}]
+    for i in groups:
+        nodes_per_group = (3 if (nb_nodes == 3) else 5)
+        group = 'database' + str(i)
+        machines.append({'cluster': CLUSTER,
+                         'nodes': nodes_per_group,
+                         'roles': ['chrony',
+                                   group,
+                                   'sysbench',
+                                   'openstack',
+                                   'rally'],
+                         'primary_network': 'n0',
+                         'secondary_networks': ['n1']})
+    conf['g5k']['resources']['machines'] = machines
+    return groups
+
+
+def tc_groups(conf, groups):
+    constraints = []
+    databases = []
+    for i in groups:
+        databases.append('database' + str(i))
+    for src in databases:
+        remaining_groups = [x for x in databases if x != src]
+        for dst in remaining_groups:
+            constraints.append({'delay': '50ms',
+                                'src': src,
+                                'dst': dst,
+                                'loss': 0,
+                                'rate': '10gbit'})
+    conf['tc']['constraints'] = constraints
 
 
 def keystone_exp():
@@ -133,10 +178,12 @@ def keystone_exp():
             # Setup parameters
             conf = copy.deepcopy(CONF)  # Make a deepcopy so we can run
                                         # multiple sweeps in parallels
-            conf['g5k']['resources']['machines'][0]['nodes'] = combination['db-nodes']
+            # conf['g5k']['resources']['machines'][0]['nodes'] = combination['db-nodes']
             conf['tc']['constraints'][0]['delay'] = "%sms" % combination['delay']
+            groups = conf_group(conf, combination)
+            tc_groups(conf, groups)
             db = combination['db']
-            locality=False
+            locality = False
             xp_name = "%s-%s-%s" % (db, combination['db-nodes'], combination['delay'])
 
             # Let's get it started hun!

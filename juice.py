@@ -70,10 +70,9 @@ tc = {
 
 
 @doc()
-def deploy(conf, db, locality, xp_name=None, **kwargs):
+def deploy(conf, db, xp_name=None, **kwargs):
     """
 usage: juice deploy [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}]
-                    [--locality]
 
 Claim resources from g5k and configure them.
 
@@ -138,9 +137,9 @@ Generate the Ansible inventory file, requires a g5k execution
 
 @doc()
 @enostask()
-def prepare(env=None, db='cockroachdb', locality=False, **kwargs):
+def prepare(env=None, db='cockroachdb', **kwargs):
     """
-usage: juice prepare [--db {mariadb,cockroachdb}] [--locality]
+usage: juice prepare [--db {mariadb,cockroachdb}]
 
 Configure the resources, requires both g5k and inventory executions
 
@@ -152,7 +151,6 @@ Configure the resources, requires both g5k and inventory executions
     extra_vars = {
         "registry": env["config"]["registry"],
         "db": db,
-        "locality": locality,
         # Set monitoring to True by default
         "enable_monitoring": env['config'].get('enable_monitoring', True)
     }
