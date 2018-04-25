@@ -22,7 +22,7 @@
     command: >
       start --insecure
       --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
-      {% if locality %} --locality=region="{{inventory_hostname_short}}"{% endif %}
+      --locality=region="test",datacenter="{{inventory_hostname_short}}"
   when:
     - inventory_hostname == dbmaster_node
 
@@ -47,7 +47,7 @@
       start --insecure
       --join="{{ hostvars[dbmaster_node]['ansible_'+ database_network].ipv4.address }}"
       --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
-      {% if locality %} --locality=region="{{inventory_hostname_short}}"{% endif %}
+      --locality=region="test",datacenter="{{inventory_hostname_short}}"
   when:
     - inventory_hostname != dbmaster_node
 
