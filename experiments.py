@@ -10,19 +10,22 @@ from execo_engine.sweep import (ParamSweeper, sweep)
 
 SWEEPER_DIR = os.path.join(os.getenv('HOME'), 'juice-sweeper')
 
-JOB_NAME = 'juice-tests-croach2'
-WALLTIME = '4:18:00'
+JOB_NAME = 'juice-tests-mercredi'
+# WALLTIME = '08:18:00'
 # WALLTIME = '44:55:00'
-# WALLTIME = '13:59:58'
+WALLTIME = '13:59:58'
 RESERVATION = None
 # RESERVATION = '2018-03-21 01:15:00'
 
-DATABASES = ['cockroachdb']
+# DATABASES = ['cockroachdb']
 # DATABASES = ['mariadb', 'cockroachdb']
-CLUSTER_SIZES = [3]
+CLUSTER_SIZES = [25, 45]
 # CLUSTER_SIZES = [3, 25, 45, 100]
 DELAYS = [0, 50, 150]
 # DELAYS = [0]
+
+CLUSTER = 'ecotype'
+SITE = 'nantes'
 
 MAX_CLUSTER_SIZE = max(CLUSTER_SIZES)
 
@@ -34,7 +37,7 @@ CONF = {
           # 'queue': 'testing',
           'walltime': WALLTIME,
           'reservation': RESERVATION,
-          'resources': {'machines': [{'cluster': 'grisou',
+          'resources': {'machines': [{'cluster': CLUSTER,
                                       'nodes': MAX_CLUSTER_SIZE,
                                       'roles': ['chrony',
                                                 'database',
@@ -43,18 +46,18 @@ CONF = {
                                                 'rally'],
                                       'primary_network': 'n1',
                                       'secondary_networks': ['n2']},
-                                     {'cluster': 'grisou',
+                                     {'cluster': CLUSTER,
                                       'nodes': 1,
                                       'roles': ['registry', 'control'],
                                       'primary_network': 'n1',
                                       'secondary_networks': []}],
                         'networks': [{'id': 'n1',
                                       'roles': ['control_network'],
-                                      'site': 'nancy',
+                                      'site': SITE,
                                       'type': 'prod'},
                                       {'id': 'n2',
                                       'roles': ['database_network'],
-                                      'site': 'nancy',
+                                      'site': SITE,
                                       'type': 'kavlan'},
                                      ]}},
   'registry': {'ceph': True,
