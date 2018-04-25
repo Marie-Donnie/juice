@@ -301,7 +301,7 @@ usage: juice backup
 
 Backup the environment, requires g5k, inventory and prepare executions
     """
-    db = env["db"]
+    db = env.get('db', 'cockroachdb')
     nb_nodes = len(env["roles"]["database"])
     latency = env["latency"]
     extra_vars = {
@@ -331,7 +331,7 @@ and inventory executions
     # Call destroy on each component
     extra_vars.update({
         "enos_action": "destroy",
-        "db": env["db"],
+        "db": env.get('db', 'cockroachdb'),
         "tasks_ran" : env["tasks_ran"],
         # Set monitoring to True by default
         "enable_monitoring": env['config'].get('enable_monitoring', True)
