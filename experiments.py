@@ -18,8 +18,8 @@ RESERVATION = None
 # RESERVATION = '2018-03-21 01:15:00'
 
 # DATABASES = ['cockroachdb']
-# DATABASES = ['mariadb', 'cockroachdb']
-CLUSTER_SIZES = [25, 45]
+DATABASES = ['mariadb', 'cockroachdb']
+CLUSTER_SIZES = [45]
 # CLUSTER_SIZES = [3, 25, 45, 100]
 DELAYS = [0, 50, 150]
 # DELAYS = [0]
@@ -114,7 +114,7 @@ def teardown():
     j.emulate(CONF['tc'])
   except Exception as e:
     logging.warning(
-        "Setup goes wrong. This is not necessarily a bad news, "
+        "Setup went wrong. This is not necessarily a bad news, "
         "in particular, if it is the first time you run the "
         "experiment: %s" % e)
 

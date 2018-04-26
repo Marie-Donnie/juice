@@ -1,7 +1,5 @@
 dbmaster_node: "{{ groups['database'][0] }}"
 
-rally_node: "{{ groups['database'][0] }}"
-
 influxdb_node: "{{ groups['control'][0] }}"
 
 cadvisor:

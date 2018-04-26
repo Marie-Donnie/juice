@@ -48,10 +48,11 @@
         when: db == "mariadb" }
 
 - name: Install monitoring agents
-  hosts: database
+  hosts:
+    - database
   roles:
     - { role: cadvisor,
-        tags: cadvisor, 
+        tags: cadvisor,
         when: enable_monitoring | bool  }
     - { role: collectd,
         tags: collectd,

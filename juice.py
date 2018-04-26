@@ -209,20 +209,30 @@ Launch OpenStack
 
 @doc()
 @enostask()
-def rally(files, directory, env=None, **kwargs):
+def rally(files, directory, burst, env=None, **kwargs):
     """
-usage: juice rally [--files FILE... | --directory DIRECTORY]
+usage: juice rally [--files FILE... | --directory DIRECTORY] [--burst]
 
 Benchmark the Openstack
 
-  --files FILE          Files to use for rally scenarios (name must be a path from rally scenarios folder).
-  --directory DIRECTORY    Directory that contains rally scenarios. [default: keystone]
+  --files FILE           Files to use for rally scenarios (name must be a path from rally scenarios folder).
+  --directory DIRECTORY  Directory that contains rally scenarios. [default: keystone]
+  --burst                Use burst or not
     """
     logging.info("Launching rally using scenarios: %s" % ( ', '.join(files)))
     logging.info("Launching rally using all scenarios in %s directory.", directory)
-    # Generate inventory
+
+    if burst:
+        rally = map(operator.attrgetter('address'),
+                    reduce(operator.add, [ hosts for role, hosts in env['roles'].iteritems()
+                                           if role.startswith('database') ]))
+    else:
+        rally = [ hosts[0].address for role, hosts in env['roles'].iteritems()
+                  if role.startswith('database') ]
+    print(rally)
     extra_vars = {
         "registry": env["config"]["registry"],
+        "rally_nodes": rally
     }
     if files:
         extra_vars.update({"rally_files": files})
