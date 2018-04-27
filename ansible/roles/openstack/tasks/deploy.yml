@@ -1,16 +1,5 @@
 ---
 
-# - name: Removes Cockroach keystone database if present
-#   postgresql_db:
-#     name: keystone
-#     login_host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
-#     login_user: root
-#     port: 26257
-#     state: absent
-#   when:
-#     - db == 'cockroachdb'
-#     - inventory_hostname == dbmaster_node
-
 - name: Removes MariaDB keystone database if present
   mysql_db:
     name: keystone

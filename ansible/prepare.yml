@@ -33,7 +33,7 @@
 
 - name: CockroachDB master deployment
   hosts:
-    - database
+    - database*
   roles:
     - { role: cockroachdb,
         tags: cockroachdb,
@@ -41,7 +41,7 @@
 
 - name: MariaDB master deployment
   hosts:
-    - database
+    - database*
   roles:
     - { role: mariadb,
         tags: mariadb,
@@ -49,7 +49,7 @@
 
 - name: Install monitoring agents
   hosts:
-    - database
+    - database*
   roles:
     - { role: cadvisor,
         tags: cadvisor,

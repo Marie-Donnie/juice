@@ -80,7 +80,6 @@ Options:
   --conf CONFIG_PATH    Path to the configuration file describing the
                         deployment [default: ./conf.yaml]
   --db DATABASE         Database to deploy on [default: cockroachdb]
-  --locality            Use follow-the-workload (only for CockroachDB)
     """
     config = {}
 
@@ -100,7 +99,7 @@ Options:
     g5k(env=xp_name, config=config)
     time.sleep(30)
     inventory()
-    prepare(db=db, locality=locality)
+    prepare(db=db)
 
 
 @doc()
@@ -144,7 +143,6 @@ usage: juice prepare [--db {mariadb,cockroachdb}]
 Configure the resources, requires both g5k and inventory executions
 
   --db DATABASE         Database to deploy on [default: cockroachdb]
-  --locality            Use follow-the-workload (only for CockroachDB)
     """
     db_validation(db)
     # Generate inventory
@@ -227,7 +225,7 @@ Benchmark the Openstack
     else:
         rally = [ hosts[0].address for role, hosts in env['roles'].iteritems()
                   if role.startswith('database') ]
-    print(rally)
+    env['rally_nodes'] = rally
     extra_vars = {
         "registry": env["config"]["registry"],
         "rally_nodes": rally
@@ -317,7 +315,8 @@ Backup the environment, requires g5k, inventory and prepare executions
         "backup_dir": os.path.join(os.getcwd(), "current/backup/%snodes-%s-%s" % (nb_nodes, db, latency)),
         "tasks_ran" : env["tasks_ran"],
         # Set monitoring to True by default
-        "enable_monitoring": env['config'].get('enable_monitoring', True)
+        "enable_monitoring": env['config'].get('enable_monitoring', True),
+        "rally_nodes": env.get('rally_nodes', []),
     }
     run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")], env["inventory"], extra_vars=extra_vars)
     run_ansible([os.path.join(JUICE_PATH, "ansible/stress.yml")], env["inventory"], extra_vars=extra_vars)
@@ -342,7 +341,8 @@ and inventory executions
         "db": env.get('db', 'cockroachdb'),
         "tasks_ran" : env["tasks_ran"],
         # Set monitoring to True by default
-        "enable_monitoring": env['config'].get('enable_monitoring', True)
+        "enable_monitoring": env['config'].get('enable_monitoring', True),
+        "rally_nodes": env.get('rally_nodes', []),
     })
     run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")], env["inventory"], extra_vars=extra_vars)
     run_ansible([os.path.join(JUICE_PATH, "ansible/stress.yml")], env["inventory"], extra_vars=extra_vars)
@@ -353,9 +353,9 @@ and inventory executions
 
 @doc()
 @enostask()
-def exp(conf, db, locality, **kwargs):
+def exp(conf, db, **kwargs):
     """
-usage: juice exp [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}] [--locality]
+usage: juice exp [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}]
 
 Launch a full experiment
 
@@ -363,11 +363,10 @@ Options:
   --conf CONFIG_PATH    Path to the configuration file describing the
                         deployment [default: ./conf.yaml]
   --db DATABASE         Database to deploy on [default: cockroachdb]
-  --locality            Use follow-the-workload (only for CockroachDB)
     """
     for delay in [0, 50, 150]:
         tc['constraints'][0]['delay'] = "%sms" % delay
-        deploy(conf, db, locality)
+        deploy(conf, db)
         openstack(db)
         emulate(tc)
         rally(["keystone/authenticate-user-and-validate-token.yaml", "keystone/create-add-and-list-user-roles.yaml", "keystone/create-and-list-tenants.yaml", "keystone/get-entities.yaml", "keystone/create-and-update-user.yaml", "keystone/create-user-update-password.yaml", "keystone/create-user-set-enabled-and-delete.yaml", "keystone/create-and-list-users.yaml"], "keystone")

@@ -1,4 +1,4 @@
-dbmaster_node: "{{ groups['database'][0] }}"
+dbmaster_node: "{{ groups['database0'][0] }}"
 
 influxdb_node: "{{ groups['control'][0] }}"
 

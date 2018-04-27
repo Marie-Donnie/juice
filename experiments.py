@@ -14,15 +14,15 @@ SWEEPER_DIR = os.path.join(os.getenv('HOME'), 'juice-sweeper')
 JOB_NAME = 'test'
 # WALLTIME = '4:18:00'
 # WALLTIME = '44:55:00'
-WALLTIME = '1:15:00'
+WALLTIME = '3:00:00'
 RESERVATION = None
 # RESERVATION = '2018-04-25 19:00:01'
 
 # DATABASES = ['cockroachdb']
-DATABASES = ['mariadb', 'cockroachdb']
-CLUSTER_SIZES = [3, 10]
+DATABASES = ['cockroachdb']
+CLUSTER_SIZES = [10]
 # CLUSTER_SIZES = [3, 25, 45, 100]
-DELAYS = [0, 50, 150]
+DELAYS = [0]
 # DELAYS = [0]
 
 CLUSTER = 'ecotype'
@@ -78,8 +78,7 @@ CONF = {
                             "network": "database_network"}],
            'default_delay': '0ms',
            'default_rate': '10gbit',
-           'enable': True,
-           'groups': ['database']}
+           'enable': True}
 }
 
 SCENARIOS = [
@@ -87,7 +86,6 @@ SCENARIOS = [
     , "keystone/create-add-and-list-user-roles.yaml"
     , "keystone/create-and-list-tenants.yaml"
     , "keystone/get-entities.yaml"
-    , "keystone/create-and-update-user.yaml"
     , "keystone/create-user-update-password.yaml"
     , "keystone/create-user-set-enabled-and-delete.yaml"
     , "keystone/create-and-list-users.yaml"
@@ -101,11 +99,11 @@ def init():
     try:
         j.g5k(config=CONF)
         j.inventory()
-        j.destroy()
-        j.emulate(CONF['tc'])
+        # j.destroy()
+        # j.emulate(CONF['tc'])
     except Exception as e:
         logging.error(
-            "Setup goes wrong. This is not necessarily a bad news, "
+            "Setup went wrong. This is not necessarily a bad news, "
             "in particular, if it is the first time you run the "
             "experiment: %s" % e)
 
@@ -145,7 +143,7 @@ def conf_group(conf, combination):
     return groups
 
 
-def tc_groups(conf, groups):
+def tc_groups(conf, groups, delay):
     constraints = []
     databases = []
     for i in groups:
@@ -153,12 +151,15 @@ def tc_groups(conf, groups):
     for src in databases:
         remaining_groups = [x for x in databases if x != src]
         for dst in remaining_groups:
-            constraints.append({'delay': '50ms',
-                                'src': src,
-                                'dst': dst,
-                                'loss': 0,
-                                'rate': '10gbit'})
+            if src != dst:
+                constraints.append({'delay': delay,
+                                    'src': src,
+                                    'dst': dst,
+                                    'loss': 0,
+                                    'rate': '10gbit'})
     conf['tc']['constraints'] = constraints
+    conf['tc']['groups'] = databases
+    print(conf['tc'])
 
 
 def keystone_exp():
@@ -179,18 +180,19 @@ def keystone_exp():
             conf = copy.deepcopy(CONF)  # Make a deepcopy so we can run
                                         # multiple sweeps in parallels
             # conf['g5k']['resources']['machines'][0]['nodes'] = combination['db-nodes']
-            conf['tc']['constraints'][0]['delay'] = "%sms" % combination['delay']
+            delay = "%sms" % combination['delay']
+            conf['tc']['constraints'][0]['delay'] = delay
             groups = conf_group(conf, combination)
-            tc_groups(conf, groups)
+            tc_groups(conf, groups, delay)
             db = combination['db']
             locality = False
-            xp_name = "%s-%s-%s" % (db, combination['db-nodes'], combination['delay'])
+            xp_name = "%s-%s-%s" % (db, combination['db-nodes'], delay)
 
             # Let's get it started hun!
-            j.deploy(conf, db, locality, xp_name)
+            j.deploy(conf, db, xp_name)
             j.openstack(db)
             j.emulate(conf['tc'])
-            j.rally(SCENARIOS, "keystone")
+            j.rally(SCENARIOS, "keystone", burst=False)
             j.backup()
 
             # Everything works well, mark combination as done
