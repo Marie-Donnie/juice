@@ -229,7 +229,7 @@ Benchmark the Openstack
     else:
         rally = [ hosts[0].address for role, hosts in env['roles'].iteritems()
                   if role.startswith('database') ]
-    print(rally)
+    env['rally_nodes'] = rally
     extra_vars = {
         "registry": env["config"]["registry"],
         "rally_nodes": rally
@@ -319,7 +319,8 @@ Backup the environment, requires g5k, inventory and prepare executions
         "backup_dir": os.path.join(os.getcwd(), "current/backup/%snodes-%s-%s" % (nb_nodes, db, latency)),
         "tasks_ran" : env["tasks_ran"],
         # Set monitoring to True by default
-        "enable_monitoring": env['config'].get('enable_monitoring', True)
+        "enable_monitoring": env['config'].get('enable_monitoring', True),
+        "rally_nodes": env.get('rally_nodes', [])
     }
     run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")], env["inventory"], extra_vars=extra_vars)
     run_ansible([os.path.join(JUICE_PATH, "ansible/stress.yml")], env["inventory"], extra_vars=extra_vars)
@@ -344,7 +345,8 @@ and inventory executions
         "db": env.get('db', 'cockroachdb'),
         "tasks_ran" : env["tasks_ran"],
         # Set monitoring to True by default
-        "enable_monitoring": env['config'].get('enable_monitoring', True)
+        "enable_monitoring": env['config'].get('enable_monitoring', True),
+         "rally_nodes": env.get('rally_nodes', [])
     })
     run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")], env["inventory"], extra_vars=extra_vars)
     run_ansible([os.path.join(JUICE_PATH, "ansible/stress.yml")], env["inventory"], extra_vars=extra_vars)
