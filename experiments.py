@@ -156,7 +156,8 @@ def tc_groups(conf, groups, delay):
                                     'src': src,
                                     'dst': dst,
                                     'loss': 0,
-                                    'rate': '10gbit'})
+                                    'rate': '10gbit',
+                                    "network": "database_network"})
     conf['tc']['constraints'] = constraints
     conf['tc']['groups'] = databases
     print(conf['tc'])
