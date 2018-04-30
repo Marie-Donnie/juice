@@ -135,7 +135,6 @@ def add_results(directory, latency, remove_delete, **kwargs):
                              'create_add_and_list_user_roles',
                              'create_and_list_tenants',
                              'get_entities',
-                             'create_and_update_user',
                              'create_user_update_password',
                              'create_user_set_enabled_and_delete',
                              'create_and_list_users']
