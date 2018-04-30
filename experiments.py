@@ -85,7 +85,6 @@ SCENARIOS = [
   , "keystone/create-add-and-list-user-roles.yaml"
   , "keystone/create-and-list-tenants.yaml"
   , "keystone/get-entities.yaml"
-  , "keystone/create-and-update-user.yaml"
   , "keystone/create-user-update-password.yaml"
   , "keystone/create-user-set-enabled-and-delete.yaml"
   , "keystone/create-and-list-users.yaml"
