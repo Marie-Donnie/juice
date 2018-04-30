@@ -308,7 +308,10 @@ usage: juice backup
 Backup the environment, requires g5k, inventory and prepare executions
     """
     db = env.get('db', 'cockroachdb')
-    nb_nodes = len(env["roles"]["database"])
+    nb_nodes = sum([ int(machine['nodes'])
+                     for machine in env['config']['g5k']['resources']['machines']
+                     if any([ role.startswith('database')
+                              for role in machine['roles'] ]) ])
     latency = env["latency"]
     extra_vars = {
         "enos_action": "backup",
