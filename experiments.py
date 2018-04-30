@@ -146,7 +146,7 @@ def keystone_exp():
             j.deploy(conf, db, locality, xp_name)
             j.openstack(db)
             j.emulate(conf['tc'])
-            j.rally(SCENARIOS, "keystone")
+            j.rally(SCENARIOS, "keystone", burst=False)
             j.backup()
 
             # Everything works well, mark combination as done
