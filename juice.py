@@ -70,10 +70,9 @@ tc = {
 
 
 @doc()
-def deploy(conf, db, locality, xp_name=None, **kwargs):
+def deploy(conf, db, xp_name=None, **kwargs):
     """
 usage: juice deploy [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}]
-                    [--locality]
 
 Claim resources from g5k and configure them.
 
@@ -81,7 +80,6 @@ Options:
   --conf CONFIG_PATH    Path to the configuration file describing the
                         deployment [default: ./conf.yaml]
   --db DATABASE         Database to deploy on [default: cockroachdb]
-  --locality            Use follow-the-workload (only for CockroachDB)
     """
     config = {}
 
@@ -101,7 +99,7 @@ Options:
     g5k(env=xp_name, config=config)
     time.sleep(30)
     inventory()
-    prepare(db=db, locality=locality)
+    prepare(db=db)
 
 
 @doc()
@@ -138,21 +136,19 @@ Generate the Ansible inventory file, requires a g5k execution
 
 @doc()
 @enostask()
-def prepare(env=None, db='cockroachdb', locality=False, **kwargs):
+def prepare(env=None, db='cockroachdb', **kwargs):
     """
-usage: juice prepare [--db {mariadb,cockroachdb}] [--locality]
+usage: juice prepare [--db {mariadb,cockroachdb}]
 
 Configure the resources, requires both g5k and inventory executions
 
   --db DATABASE         Database to deploy on [default: cockroachdb]
-  --locality            Use follow-the-workload (only for CockroachDB)
     """
     db_validation(db)
     # Generate inventory
     extra_vars = {
         "registry": env["config"]["registry"],
         "db": db,
-        "locality": locality,
         # Set monitoring to True by default
         "enable_monitoring": env['config'].get('enable_monitoring', True)
     }
@@ -357,9 +353,9 @@ and inventory executions
 
 @doc()
 @enostask()
-def exp(conf, db, locality, **kwargs):
+def exp(conf, db, **kwargs):
     """
-usage: juice exp [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}] [--locality]
+usage: juice exp [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}]
 
 Launch a full experiment
 
@@ -367,11 +363,10 @@ Options:
   --conf CONFIG_PATH    Path to the configuration file describing the
                         deployment [default: ./conf.yaml]
   --db DATABASE         Database to deploy on [default: cockroachdb]
-  --locality            Use follow-the-workload (only for CockroachDB)
     """
     for delay in [0, 50, 150]:
         tc['constraints'][0]['delay'] = "%sms" % delay
-        deploy(conf, db, locality)
+        deploy(conf, db)
         openstack(db)
         emulate(tc)
         rally(["keystone/authenticate-user-and-validate-token.yaml", "keystone/create-add-and-list-user-roles.yaml", "keystone/create-and-list-tenants.yaml", "keystone/get-entities.yaml", "keystone/create-and-update-user.yaml", "keystone/create-user-update-password.yaml", "keystone/create-user-set-enabled-and-delete.yaml", "keystone/create-and-list-users.yaml"], "keystone")

@@ -6,7 +6,6 @@
     state: directory
 
 # See https://www.cockroachlabs.com/docs/stable/start-a-local-cluster-in-docker.html
-# See https://www.cockroachlabs.com/docs/stable/demo-follow-the-workload.html for locality
 
 - name: Start the first cockroachdb node
   docker_container:
@@ -22,7 +21,6 @@
     command: >
       start --insecure
       --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
-      {% if locality %} --locality=region="{{inventory_hostname_short}}"{% endif %}
   when:
     - inventory_hostname == dbmaster_node
 
@@ -47,7 +45,6 @@
       start --insecure
       --join="{{ hostvars[dbmaster_node]['ansible_'+ database_network].ipv4.address }}"
       --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
-      {% if locality %} --locality=region="{{inventory_hostname_short}}"{% endif %}
   when:
     - inventory_hostname != dbmaster_node
 

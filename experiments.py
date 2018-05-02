@@ -138,11 +138,10 @@ def keystone_exp():
             conf['g5k']['resources']['machines'][0]['nodes'] = combination['db-nodes']
             conf['tc']['constraints'][0]['delay'] = "%sms" % combination['delay']
             db = combination['db']
-            locality=False
             xp_name = "%s-%s-%s" % (db, combination['db-nodes'], combination['delay'])
 
             # Let's get it started hun!
-            j.deploy(conf, db, locality, xp_name)
+            j.deploy(conf, db, xp_name)
             j.openstack(db)
             j.emulate(conf['tc'])
             j.rally(SCENARIOS, "keystone", burst=False)
