@@ -1,11 +1,11 @@
 ---
+
 - name: Start the cadvisor
   docker_container:
     name: "cadvisor"
     image: "google/cadvisor"
     command: "-storage_driver_db=cadvisor -storage_driver_host={{ hostvars[influxdb_node]['ansible_' + hostvars[influxdb_node]['control_network']]['ipv4']['address'] }}:8086 -storage_driver=influxdb --housekeeping_interval={{ cadvisor.housekeeping_interval }}"
     detach: True
-    # hostname: "{{ inventory_hostname }}"
     ports:
       # don't bind to the host port 8080 since swift is using it by default
       - "8888:8080"
