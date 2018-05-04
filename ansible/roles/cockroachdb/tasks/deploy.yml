@@ -22,11 +22,10 @@
     command: >
       start --insecure
       --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
-      {% for group in item %}{% if group.startswith('database') %}--locality=region=group,datacenter="{{ inventory_hostname_short }}"{% endif %}{% endfor %}
+      {% if 'database' in item %}--locality=region={{ item }},datacenter={{ inventory_hostname_short }}{% endif %}
   when:
     - inventory_hostname == dbmaster_node
-  loop:
-    - " {{ group_names }} "
+  loop: "{{ group_names }}"
 
 - name: Waiting for the first database to be ready
   wait_for:
@@ -49,11 +48,10 @@
       start --insecure
       --join="{{ hostvars[dbmaster_node]['ansible_'+ database_network].ipv4.address }}"
       --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
-      {% for group in item %}{% if group.startswith('database') %}--locality=region=group,datacenter="{{ inventory_hostname_short }}"{% endif %}{% endfor %}
+      {% if 'database' in item %}--locality=region={{ item }},datacenter={{ inventory_hostname_short }}{% endif %}
   when:
     - inventory_hostname != dbmaster_node
-  loop:
-    - " {{ group_names }} "
+  loop: "{{ group_names }}"
 
 - name: Waiting for databases to be ready
   wait_for:
