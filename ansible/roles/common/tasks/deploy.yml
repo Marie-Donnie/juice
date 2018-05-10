@@ -1,11 +1,4 @@
 ---
-
-- name: clean
-  command: apt-get clean
-
-- name: Apt update
-  command: apt update
-
 - name: Installing dependencies
   apt:
     name: "{{ item }}"
