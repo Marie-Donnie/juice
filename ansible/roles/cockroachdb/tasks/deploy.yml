@@ -2,10 +2,18 @@
 
 - name: Create the directories
   file:
-    path: "/tmp/cockroach-data/"
+    path: "/database/"
     state: directory
 
 # See https://www.cockroachlabs.com/docs/stable/start-a-local-cluster-in-docker.html
+
+- name: Mount /database
+  mount:
+    path: /database
+    src: tmpfs
+    fstype: tmpfs
+    state: mounted
+    opts: size=16G
 
 - name: Start the first cockroachdb node
   docker_container:
@@ -17,7 +25,7 @@
       - 26257:26257
       - 8080:8080
     volumes:
-      - "/tmp/cockroach-data:/cockroach/cockroach-data"
+      - "/database:/cockroach/cockroach-data"
     command: >
       start --insecure
       --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
@@ -40,7 +48,7 @@
       - 26257:26257
       - 8080:8080
     volumes:
-      - "/tmp/cockroach-data:/cockroach/cockroach-data"
+      - "/database:/cockroach/cockroach-data"
     command: >
       start --insecure
       --join="{{ hostvars[dbmaster_node]['ansible_'+ database_network].ipv4.address }}"
