@@ -5,7 +5,18 @@
     state: absent
     force_kill: yes
 
+- name: Mount /database
+  mount:
+    path: /database
+    src: tmpfs
+    fstype: tmpfs
+    state: unmounted
+
 - name: Remove volumes
   file:
     state: absent
-    path: "/tmp/cockroach-data"
+    path: "{{ item }}"
+    force: yes
+  with_items:
+    - "/opt/local/etc/mysql.conf.d/"
+    - "/database"

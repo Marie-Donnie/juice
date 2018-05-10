@@ -6,7 +6,15 @@
     path: "{{ item }}"
     state: directory
   with_items:
-    - ["/opt/local/etc/mysql.conf.d/", "/tmp/data/mysql"]
+    - ["/opt/local/etc/mysql.conf.d/", "/database/mysql"]
+
+- name: Mount /database
+  mount:
+    path: /database
+    src: tmpfs
+    fstype: tmpfs
+    state: mounted
+    opts: size=16G
 
 - name: Generate the configuration file
   template:
@@ -56,7 +64,7 @@
       - "4444:4444"
     volumes:
       - "/opt/local/etc/mysql.conf.d:/etc/mysql/conf.d"
-      - "/tmp/data:/var/lib/mysql"
+      - "/database:/var/lib/mysql"
     command: --wsrep_node_address="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
   when: inventory_hostname != dbmaster_node
 
