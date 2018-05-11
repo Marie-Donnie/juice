@@ -1,9 +1,6 @@
-registry:
-  type: none
-
 g5k:
   # reservation: "2018-03-12 19:00:01"
-  walltime: "09:00:00"
+  walltime: "05:30:00"
   dhcp: true
   job_name: juice-tests
   env_name: debian9-x64-nfs
@@ -15,16 +12,14 @@ g5k:
           - sysbench
           - openstack
           - rally
-        cluster: grisou
-        nodes: 2
+        cluster: paravance
+        nodes: 3
         primary_network: n1
         secondary_networks: [n2]
       - roles:
           - control
-          # - influxdb
-          # - grafana
-          # - chrony-server
-        cluster: grisou
+          - registry
+        cluster: paravance
         nodes: 1
         primary_network: n1
         secondary_networks: []
@@ -33,11 +28,23 @@ g5k:
         roles:
           - control_network
         type: prod
-        site: nancy
+        site: rennes
       - id: n2
         roles:
           - database_network
         type: kavlan
-        site: nancy
+        site: rennes
 
 enable_monitoring: true
+
+registry:
+  type: internal
+  ceph: True
+  ceph_id: discovery
+  ceph_keyring: /home/discovery/.ceph/ceph.client.discovery.keyring
+  ceph_mon_host: 
+    - ceph0.rennes.grid5000.fr
+    - ceph1.rennes.grid5000.fr
+    - ceph2.rennes.grid5000.fr
+  ceph_rbd: discovery_kolla_registry/datas
+
