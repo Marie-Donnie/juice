@@ -40,7 +40,7 @@ Usage:
 
 
 def db_validation(db):
-    databases = ['cockroachdb', 'mariadb']
+    databases = ['mariadb', 'cockroachdb', 'galera']
     if db not in databases:
         exit("%s is not an allowed database. Try one of the following: %s"
              % (db, ', '.join(databases)))

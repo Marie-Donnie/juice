@@ -1,0 +1,50 @@
+---
+- name: Cleanup sysbench on CockroachDB
+  docker_container:
+    name: "sysbench"
+    image: "severalnines/sysbench"
+    detach: False
+    volumes: /sysbench:/sysbench
+    command: >
+      sysbench --db-driver=pgsql
+               --pgsql-host="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
+               --pgsql-port=26257
+               --pgsql-user=root
+               --table-size=1000000
+               oltp_read_write
+               cleanup
+  when:
+    - inventory_hostname == dbmaster_node
+
+- name: Prepare sysbench on CockroachDB
+  docker_container:
+    name: "sysbench"
+    image: "severalnines/sysbench"
+    detach: False
+    volumes: /sysbench:/sysbench
+    command: >
+      sysbench --db-driver=pgsql
+               --pgsql-host="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
+               --pgsql-port=26257
+               --pgsql-user=root
+               --table-size=1000000
+               oltp_read_write
+               prepare
+  when:
+    - inventory_hostname == dbmaster_node
+
+- name: Run sysbench on CockroachDB
+  docker_container:
+    name: "sysbench"
+    image: "severalnines/sysbench"
+    detach: False
+    volumes: /sysbench:/sysbench
+    command: >
+      bash -c "
+        sysbench --db-driver=pgsql\
+                 --pgsql-host=\"{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}\"\
+                 --pgsql-port=26257\
+                 --pgsql-user=root\
+                 --table-size=1000000\
+                 oltp_read_write\
+                 run > /sysbench/results-{{ ansible_date_time.iso8601_micro }}.log"

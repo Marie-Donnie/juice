@@ -13,7 +13,7 @@ set +o xtrace
 
 MYSQL_DRIVER=${MYSQL_DRIVER:-PyMySQL}
 
-register_database mariadb
+register_database galera
 
 DATABASE_USER=root
 DATABASE_PASSWORD=my-secret-pw
@@ -21,17 +21,17 @@ DATABASE_PASSWORD=my-secret-pw
 # Functions
 # ---------
 
-function get_database_type_mariadb {
+function get_database_type_galera {
     echo mysql
 }
 
 # Get rid of everything enough to cleanly change database backends
-function cleanup_database_mariadb {
-    # Handled by mariadb/tasks/destroy.yml
+function cleanup_database_galera {
+    # Handled by galera/tasks/destroy.yml
     return
 }
 
-function recreate_database_mariadb {
+function recreate_database_galera {
     local db=$1
     {% if inventory_hostname == dbmaster_node %}
     sudo docker exec -i mariadb-{{ inventory_hostname_short }} mysql -u$DATABASE_USER -p$DATABASE_PASSWORD -e "DROP DATABASE IF EXISTS $db;"
@@ -40,17 +40,17 @@ function recreate_database_mariadb {
     return
 }
 
-function configure_database_mariadb {
-    # Handled by mariadb/tasks/deploy.yml
+function configure_database_galera {
+    # Handled by galera/tasks/deploy.yml
     return
 }
 
-function install_database_mariadb {
+function install_database_galera {
     # Handled by cockroachdb/tasks/deploy.yml
     return
 }
 
-function install_database_python_mariadb {
+function install_database_python_galera {
     # Install Python client module
     pip_install_gr $MYSQL_DRIVER
     if [[ "$MYSQL_DRIVER" == "MySQL-python" ]]; then
@@ -61,7 +61,7 @@ function install_database_python_mariadb {
     return
 }
 
-function database_connection_url_mariadb {
+function database_connection_url_galera {
     local db=$1
     echo "$BASE_SQL_CONN:3306/$db?charset=utf8"
 }

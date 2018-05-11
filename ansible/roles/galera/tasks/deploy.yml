@@ -1,0 +1,88 @@
+---
+# See https://withblue.ink/2016/03/09/galera-cluster-mariadb-coreos-and-docker-part-1.html
+- name: Mount /database in tmpfs to store MariaDB
+  mount:
+    path: /database
+    src: tmpfs
+    fstype: tmpfs
+    state: mounted
+    opts: size=16G
+
+- name: Create MariaDB store and conf directories in /database
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - /database/data
+    - /database/mysql.conf.d
+
+- name: Generate the configuration file
+  template:
+    src: mariadb.conf.j2
+    dest: /database/mysql.conf.d/mysql_server.cnf
+
+- name: Start the MariaDB-Galera first container
+  docker_container:
+    name: "mariadb-{{ inventory_hostname_short }}"
+    image: "mariadb"
+    detach: True
+    exposed_ports:
+      - 4567
+    published_ports:
+      - "3306:3306"
+      - "4567:4567"
+      - "4567:4567/udp"
+      - "4568:4568"
+      - "4444:4444"
+    volumes:
+      - /database/mysql.conf.d:/etc/mysql/conf.d
+      - /database/data:/var/lib/mysql
+    env:
+      MYSQL_INITDB_SKIP_TZINFO=yes
+      MYSQL_ROOT_PASSWORD=my-secret-pw
+    command: >
+      --wsrep-new-cluster
+      --wsrep_node_address="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
+  when: inventory_hostname == dbmaster_node
+
+- name: Waiting for the MariaDB-Galera first database to be ready
+  wait_for:
+    host: "{{ hostvars[dbmaster_node]['ansible_' + database_network]['ipv4']['address'] }}"
+    port: 3306
+  when: inventory_hostname == dbmaster_node
+
+# The mariadb Docker image, by default, initializes a new database.
+# But we don't want it to do so, since this is an active/active
+# replication and database has been initialized during the previous
+# task. To prevent the initialization, we `touch` the /var/lib/mysql
+# directory.
+- name: Create the /database/data/mysql directory to prevent MariaDB init
+  file:
+    path: /database/data/mysql
+    state: directory
+  when: inventory_hostname != dbmaster_node
+
+- name: Start MariaDB-Galera other containers
+  docker_container:
+    name: "mariadb-{{ inventory_hostname_short }}"
+    image: "mariadb"
+    detach: True
+    exposed_ports:
+      - 4567
+    published_ports:
+      - "3306:3306"
+      - "4567:4567"
+      - "4567:4567/udp"
+      - "4568:4568"
+      - "4444:4444"
+    volumes:
+      - /database/mysql.conf.d:/etc/mysql/conf.d
+      - /database/data:/var/lib/mysql
+    command: --wsrep_node_address="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
+  when: inventory_hostname != dbmaster_node
+
+- name: Waiting for the MariaDB-Galera other databases to be ready
+  wait_for:
+    host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
+    port: 3306
+  when: inventory_hostname != dbmaster_node

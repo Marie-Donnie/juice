@@ -3,7 +3,13 @@ REGION_NAME="{{ inventory_hostname_short }}"
 KEYSTONE_REGION_NAME="${REGION_NAME}"
 HOST_IP="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
 ADMIN_PASSWORD=admin
+{# With MariaDB, DATABASE_HOST is always the "master" node. With other
+ # RDBMS, DATABASE_HOST is the one deployed aside this OpenStack #}
+{% if db == 'mariadb' %}
+DATABASE_HOST="{{ hostvars[dbmaster_node]['ansible_' + database_network]['ipv4']['address'] }}"
+{% else %}
 DATABASE_HOST="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
+{% endif %}
 DATABASE_USER=root
 DATABASE_PASSWORD=my-secret-pw
 RABBIT_PASSWORD=admin
@@ -42,8 +48,10 @@ disable_service q-meta
 disable_service q-svc
 disable_service tempest
 disable_service mysql
-{% if db == 'cockroachdb' %}
+{% if db == 'mariadb' %}
+enable_service mariadb
+{% elif db == 'cockroachdb' %}
 enable_service cockroachdb
-{% elif db == 'mariadb' %}
+{% elif db == 'galera' %}
 enable_service galera
 {% endif %}

@@ -1,53 +1,11 @@
 ---
-# See https://withblue.ink/2016/03/09/galera-cluster-mariadb-coreos-and-docker-part-1.html
-
-- name: Create the directories
-  file:
-    path: "{{ item }}"
-    state: directory
-  with_items:
-    - ["/opt/local/etc/mysql.conf.d/", "/database/mysql"]
-
-- name: Mount /database
+- name: Mount /database in tmpfs to store MariaDB
   mount:
     path: /database
     src: tmpfs
     fstype: tmpfs
     state: mounted
     opts: size=16G
-
-- name: Generate the configuration file
-  template:
-    src: mariadb.conf.j2
-    dest: /opt/local/etc/mysql.conf.d/mysql_server.cnf
-  with_list: "{{ [groups['database']] }}"
-
-- name: Start the MariaDB-master container
-  docker_container:
-    name: "mariadb-{{ inventory_hostname_short }}"
-    image: "mariadb"
-    detach: True
-    exposed_ports:
-      - 4567
-    published_ports:
-      - "3306:3306"
-      - "4567:4567"
-      - "4567:4567/udp"
-      - "4568:4568"
-      - "4444:4444"
-    volumes:
-      - "/opt/local/etc/mysql.conf.d:/etc/mysql/conf.d"
-    env:
-      MYSQL_INITDB_SKIP_TZINFO=yes
-      MYSQL_ROOT_PASSWORD=my-secret-pw
-    command: --wsrep-new-cluster --wsrep_node_address="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
-  when: inventory_hostname == dbmaster_node
-
-- name: Waiting the MariaDB master to be ready
-  wait_for:
-    host: "{{ hostvars[dbmaster_node]['ansible_' + database_network]['ipv4']['address'] }}"
-    port: 3306
-  when: inventory_hostname == dbmaster_node
 
 - name: Start the MariaDB container
   docker_container:
@@ -63,14 +21,12 @@
       - "4568:4568"
       - "4444:4444"
     volumes:
-      - "/opt/local/etc/mysql.conf.d:/etc/mysql/conf.d"
       - "/database:/var/lib/mysql"
-    command: --wsrep_node_address="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
-  when: inventory_hostname != dbmaster_node
+    env:
+      MYSQL_INITDB_SKIP_TZINFO=yes
+      MYSQL_ROOT_PASSWORD=my-secret-pw
 
-
-- name: Waiting for the database to be ready
+- name: Waiting for MariaDB to be ready
   wait_for:
-    host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
+    host: "{{ hostvars[dbmaster_node]['ansible_' + database_network]['ipv4']['address'] }}"
     port: 3306
-  when: inventory_hostname != dbmaster_node

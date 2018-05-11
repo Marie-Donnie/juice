@@ -1,0 +1,18 @@
+---
+- name: Creating sbtest user for sysbench
+  mysql_user:
+    name: sbtest
+    password: sbtest
+    host: "%"
+    login_user: root
+    login_password: my-secret-pw
+    login_host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
+    priv: '*.*:ALL,GRANT'
+
+- name: Create MariaDB sbtest database for sysbench
+  mysql_db:
+    name: sbtest
+    login_host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
+    login_user: sbtest
+    login_password: sbtest
+    state: present
