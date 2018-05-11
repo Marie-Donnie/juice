@@ -11,9 +11,3 @@
     src: tmpfs
     fstype: tmpfs
     state: unmounted
-
-- name: Remove /database
-  file:
-    state: absent
-    path: /database
-    force: yes
