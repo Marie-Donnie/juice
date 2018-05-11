@@ -1,21 +1,20 @@
 ---
 # See https://withblue.ink/2016/03/09/galera-cluster-mariadb-coreos-and-docker-part-1.html
-- name: Create the /database directory to store MariaDB (and its conf)
-  file:
-    path: "{{ item }}"
-    state: directory
-  with_items:
-    - /database
-    - /database/data
-    - /database/mysql.conf.d
-
-- name: Mount /database in tmpfs
+- name: Mount /database in tmpfs to store MariaDB
   mount:
     path: /database
     src: tmpfs
     fstype: tmpfs
     state: mounted
     opts: size=16G
+
+- name: Create MariaDB store and conf directories in /database
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - /database/data
+    - /database/mysql.conf.d
 
 - name: Generate the configuration file
   template:
