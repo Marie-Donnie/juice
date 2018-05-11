@@ -12,25 +12,19 @@ import juice as j
 from execo_engine.sweep import (ParamSweeper, sweep)
 
 
-SWEEPER_DIR = os.path.join(os.getenv('HOME'), 'juice-sweeper')
+SWEEPER_DIR = os.path.join(os.getenv('HOME'), 'juice-sweeper-latency-impact')
 
+# G5k parameters
 JOB_NAME = 'juice-latency-impact'
-JOB_NAME = 'juice-cluster-size-impact'
-WALLTIME = '09:54:00'
-# WALLTIME = '44:55:00'
-# WALLTIME = '13:59:58'
-# RESERVATION = None
-RESERVATION = '2018-05-10 23:05:00'
-
-# DATABASES = ['cockroachdb']
-DATABASES = ['mariadb', 'cockroachdb']
-CLUSTER_SIZES = [9]
-DELAYS = [0, 50, 150]
-
+WALLTIME = '61:59:00'
+RESERVATION = '2018-05-11 19:00:01'
 CLUSTER = 'ecotype'
 SITE = 'nantes'
 
-MAX_CLUSTER_SIZE = max(CLUSTER_SIZES)
+# Experimentation parameters
+DATABASES = ['mariadb', 'galera', 'cockroachdb']
+DELAYS = [50, 150]
+BURST = [False, True]
 
 CONF = {
   'enable_monitoring': True,
@@ -41,7 +35,7 @@ CONF = {
           'walltime': WALLTIME,
           'reservation': RESERVATION,
           'resources': {'machines': [{'cluster': CLUSTER,
-                                      'nodes': MAX_CLUSTER_SIZE,
+                                      'nodes': 9,
                                       'roles': ['chrony',
                                                 'database',
                                                 'sysbench',
@@ -127,27 +121,29 @@ def keystone_exp():
         sweeps=sweep({
               'db':    DATABASES
             , 'delay': DELAYS
-            , 'db-nodes': CLUSTER_SIZES
+            , 'burst': BURST
         }))
 
     while sweeper.get_remaining():
         combination = sweeper.get_next()
         logging.info("Treating combination %s" % pformat(combination))
 
+        db    = combination['db']
+        delay = combination['delay']
+        burst = combination['burst']
+
         try:
             # Setup parameters
             conf = copy.deepcopy(CONF)  # Make a deepcopy so we can run
                                         # multiple sweeps in parallels
-            conf['g5k']['resources']['machines'][0]['nodes'] = combination['db-nodes']
-            conf['tc']['constraints'][0]['delay'] = "%sms" % combination['delay']
-            db = combination['db']
-            xp_name = "%s-%s-%s-burst" % (db, combination['db-nodes'], combination['delay'])
+            conf['tc']['constraints'][0]['delay'] = "%sms" % delay
+            xp_name = "%s-9-%s-%s" % (db, delay, str(burst)[0])
 
             # Let's get it started hun!
             j.deploy(conf, db, xp_name)
             j.openstack(db)
             j.emulate(conf['tc'])
-            j.rally(SCENARIOS, "keystone", burst=False)
+            j.rally(SCENARIOS, "keystone", burst)
             j.backup()
 
             # Everything works well, mark combination as done

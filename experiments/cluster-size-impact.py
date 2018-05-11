@@ -12,23 +12,19 @@ import juice as j
 from execo_engine.sweep import (ParamSweeper, sweep)
 
 
-SWEEPER_DIR = os.path.join(os.getenv('HOME'), 'juice-sweeper')
+SWEEPER_DIR = os.path.join(os.getenv('HOME'), 'juice-sweeper-cluster-impact')
 
+# G5k parameters
 JOB_NAME = 'juice-cluster-size-impact'
-WALLTIME = '02:45:00'
-# WALLTIME = '44:55:00'
-# WALLTIME = '13:59:58'
-RESERVATION = None
-# RESERVATION = '2018-03-21 01:15:00'
+WALLTIME = '61:59:00'
+RESERVATION = '2018-05-11 19:00:01'
+CLUSTER = 'ecotype'
+SITE = 'nantes'
 
-DATABASES = ['cockroachdb']
-# DATABASES = ['mariadb', 'cockroachdb']
-CLUSTER_SIZES = [1]
-# CLUSTER_SIZES = [3, 9, 45]
-DELAYS = [0]
-
-CLUSTER = 'grimoire'
-SITE = 'nancy'
+# Experimentation parameters
+DATABASES = ['mariadb', 'galera', 'cockroachdb']
+CLUSTER_SIZES = [3, 9, 45]
+BURST = [False, True]
 
 MAX_CLUSTER_SIZE = max(CLUSTER_SIZES)
 
@@ -102,7 +98,6 @@ def init():
     j.g5k(config=CONF)
     j.inventory()
     j.destroy()
-    j.emulate(CONF['tc'])
   except Exception as e:
     logging.error(
         "Setup goes wrong. This is not necessarily a bad news, "
@@ -113,7 +108,6 @@ def init():
 def teardown():
   try:
     j.destroy()
-    j.emulate(CONF['tc'])
   except Exception as e:
     logging.warning(
         "Setup went wrong. This is not necessarily a bad news, "
@@ -125,29 +119,30 @@ def keystone_exp():
     sweeper = ParamSweeper(
         SWEEPER_DIR,
         sweeps=sweep({
-              'db':    DATABASES
-            , 'delay': DELAYS
+              'db':       DATABASES
             , 'db-nodes': CLUSTER_SIZES
+            , 'burst':    BURST
         }))
 
     while sweeper.get_remaining():
         combination = sweeper.get_next()
         logging.info("Treating combination %s" % pformat(combination))
 
+        db    = combination['db']
+        csize = combination['db-nodes']
+        burst = combination['burst']
+
         try:
             # Setup parameters
             conf = copy.deepcopy(CONF)  # Make a deepcopy so we can run
                                         # multiple sweeps in parallels
-            conf['g5k']['resources']['machines'][0]['nodes'] = combination['db-nodes']
-            conf['tc']['constraints'][0]['delay'] = "%sms" % combination['delay']
-            db = combination['db']
-            xp_name = "%s-%s-%s" % (db, combination['db-nodes'], combination['delay'])
+            conf['g5k']['resources']['machines'][0]['nodes'] = csize
+            xp_name = "%s-%s-0-%s" % (db, csize, str(burst)[0])
 
             # Let's get it started hun!
             j.deploy(conf, db, xp_name)
             j.openstack(db)
-            j.emulate(conf['tc'])
-            j.rally(SCENARIOS, "keystone", burst=False)
+            j.rally(SCENARIOS, "keystone", burst)
             j.backup()
 
             # Everything works well, mark combination as done
