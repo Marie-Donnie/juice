@@ -32,7 +32,7 @@
         when: enable_monitoring | bool }
 
 - name: MariaDB deployment
-  hosts: database_master
+  hosts: database[0]
   roles:
     - { role: mariadb,
         tags: mariadb,

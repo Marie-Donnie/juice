@@ -33,8 +33,11 @@ function cleanup_database_mariadb {
 
 function recreate_database_mariadb {
     local db=$1
+    {% if inventory_hostname == dbmaster_node %}
     sudo docker exec -i mariadb-{{ inventory_hostname_short }} mysql -u$DATABASE_USER -p$DATABASE_PASSWORD -e "DROP DATABASE IF EXISTS $db;"
     sudo docker exec -i mariadb-{{ inventory_hostname_short }} mysql -u$DATABASE_USER -p$DATABASE_PASSWORD -e "CREATE DATABASE $db CHARACTER SET utf8;"
+    {% endif %}
+    return
 }
 
 function configure_database_mariadb {

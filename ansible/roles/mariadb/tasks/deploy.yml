@@ -1,10 +1,5 @@
 ---
-- name: Create the /database directory to store MariaDB
-  file:
-    path: "/database"
-    state: directory
-
-- name: Mount /database in tmpfs
+- name: Mount /database in tmpfs to store MariaDB
   mount:
     path: /database
     src: tmpfs
