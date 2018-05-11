@@ -57,35 +57,13 @@
   become: true
   become_user: stack
 
-- name: Patching devstack (Add support to personally deployed mariadb)
+- name: "Patching devstack (Add support to {{ db }})"
   template:
-    src: lib-mariadb.j2
+    src: "lib-{{ db }}.j2"
     dest: /opt/stack/devstack/lib/databases/mariadb
     owner: stack
   become: true
   become_user: stack
-  when:
-    - db == 'mariadb'
-
-- name: Patching devstack (Add support to cockroachdb database)
-  template:
-    src: lib-cockroachdb.j2
-    dest: /opt/stack/devstack/lib/databases/cockroachdb
-    owner: stack
-  become: true
-  become_user: stack
-  when:
-    - db == 'cockroachdb'
-
-- name: Patching devstack (Add support to mariadb-galera database)
-  template:
-    src: lib-galera.j2
-    dest: /opt/stack/devstack/lib/databases/galera
-    owner: stack
-  become: true
-  become_user: stack
-  when:
-    - db == 'galera'
 
 - name: Patching devstack (Remove keystone bootstrapping)
   template:

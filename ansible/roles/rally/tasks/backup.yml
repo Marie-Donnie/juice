@@ -1,17 +1,16 @@
 ---
-
 - name: Tar the data directory
   archive:
     path:
       - /root/rally_home
-    dest: "/rally-{{ inventory_hostname }}.tar.gz"
+    dest: "/rally-{{ inventory_hostname_short }}.tar.gz"
   when:
     - '"rally" in tasks_ran'
 
 - name: Fetch rally data
   fetch:
     src: "/rally-{{ inventory_hostname }}.tar.gz"
-    dest: "{{ backup_dir }}/rally-{{ inventory_hostname }}.tar.gz"
+    dest: "{{ backup_dir }}/rally-{{ inventory_hostname_short }}.tar.gz"
     flat: yes
   when:
     - '"rally" in tasks_ran'
