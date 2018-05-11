@@ -5,18 +5,15 @@
     state: absent
     force_kill: yes
 
-- name: Mount /database
+- name: Unmount /database
   mount:
     path: /database
     src: tmpfs
     fstype: tmpfs
     state: unmounted
 
-- name: Remove volumes
+- name: Remove /database
   file:
     state: absent
-    path: "{{ item }}"
+    path: /database
     force: yes
-  with_items:
-    - "/opt/local/etc/mysql.conf.d/"
-    - "/database"

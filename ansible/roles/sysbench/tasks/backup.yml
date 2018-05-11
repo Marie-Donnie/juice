@@ -1,16 +1,12 @@
 ---
+- name: Tar sysbench results
+  archive:
+    path:
+      - /sysbench
+    dest: "/sysbench-{{ inventory_hostname_short }}.tar.gz"
 
-- name: Getting the docker logs
-  shell: docker logs sysbench > /sysbench_logs.txt
-  when:
-    - inventory_hostname == dbmaster_node
-    - '"stress" in tasks_ran'
-
-- name: Fetching the logs
+- name: Fetch rally data
   fetch:
-    src: /sysbench_logs.txt
-    dest: "{{ backup_dir }}/sysbench_logs.txt"
+    src: "/sysbench-{{ inventory_hostname_short }}.tar.gz"
+    dest: "{{ backup_dir }}/sysbench-{{ inventory_hostname_short }}.tar.gz"
     flat: yes
-  when:
-    - inventory_hostname == dbmaster_node
-    - '"stress" in tasks_ran'

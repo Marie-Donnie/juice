@@ -1,5 +1,5 @@
 ---
-- name: Deploy sysbench
+- name: Manage sysbench
   hosts: sysbench
   roles:
     - { role: sysbench,

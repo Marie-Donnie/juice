@@ -72,7 +72,7 @@ tc = {
 @doc()
 def deploy(conf, db, xp_name=None, **kwargs):
     """
-usage: juice deploy [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}]
+usage: juice deploy [--conf CONFIG_PATH] [--db {mariadb,cockroachdb,galera}]
 
 Claim resources from g5k and configure them.
 
@@ -138,7 +138,7 @@ Generate the Ansible inventory file, requires a g5k execution
 @enostask()
 def prepare(env=None, db='cockroachdb', **kwargs):
     """
-usage: juice prepare [--db {mariadb,cockroachdb}]
+usage: juice prepare [--db {mariadb,cockroachdb,galera}]
 
 Configure the resources, requires both g5k and inventory executions
 
@@ -163,7 +163,7 @@ Configure the resources, requires both g5k and inventory executions
 @enostask()
 def stress(db, env=None, **kwargs):
     """
-usage: juice stress [--db {mariadb,cockroachdb}]
+usage: juice stress [--db {mariadb,cockroachdb,galera}]
 
 Launch sysbench tests
 
@@ -174,10 +174,10 @@ Launch sysbench tests
     extra_vars = {
         "registry": env["config"]["registry"],
         "db": db,
+        "enos_action": "stress"
     }
     # use deploy of each role
-    extra_vars.update({"enos_action": "deploy"})
-    run_ansible(["ansible/stress.yml"], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/stress.yml")], env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('stress')
 
 
@@ -185,7 +185,7 @@ Launch sysbench tests
 @enostask()
 def openstack(db, env=None, **kwargs):
     """
-usage: juice openstack [--db {mariadb,cockroachdb}]
+usage: juice openstack [--db {mariadb,cockroachdb,galera}]
 
 Launch OpenStack
 
@@ -319,7 +319,6 @@ Backup the environment, requires g5k, inventory and prepare executions
         "rally_nodes": env.get('rally_nodes', [])
     }
     run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")], env["inventory"], extra_vars=extra_vars)
-    run_ansible([os.path.join(JUICE_PATH, "ansible/stress.yml")], env["inventory"], extra_vars=extra_vars)
     run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")], env["inventory"], extra_vars=extra_vars)
     run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")], env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('backup')
@@ -345,36 +344,9 @@ and inventory executions
          "rally_nodes": env.get('rally_nodes', [])
     })
     run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")], env["inventory"], extra_vars=extra_vars)
-    run_ansible([os.path.join(JUICE_PATH, "ansible/stress.yml")], env["inventory"], extra_vars=extra_vars)
     run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")], env["inventory"], extra_vars=extra_vars)
     run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")], env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('destroy')
-
-
-@doc()
-@enostask()
-def exp(conf, db, **kwargs):
-    """
-usage: juice exp [--conf CONFIG_PATH] [--db {mariadb,cockroachdb}]
-
-Launch a full experiment
-
-Options:
-  --conf CONFIG_PATH    Path to the configuration file describing the
-                        deployment [default: ./conf.yaml]
-  --db DATABASE         Database to deploy on [default: cockroachdb]
-    """
-    for delay in [0, 50, 150]:
-        tc['constraints'][0]['delay'] = "%sms" % delay
-        deploy(conf, db)
-        openstack(db)
-        emulate(tc)
-        rally(["keystone/authenticate-user-and-validate-token.yaml", "keystone/create-add-and-list-user-roles.yaml", "keystone/create-and-list-tenants.yaml", "keystone/get-entities.yaml", "keystone/create-and-update-user.yaml", "keystone/create-user-update-password.yaml", "keystone/create-user-set-enabled-and-delete.yaml", "keystone/create-and-list-users.yaml"], "keystone")
-        backup()
-        destroy()
-        tc['constraints'][0]['delay'] = '0ms'
-        emulate(tc)
-
 
 
 if __name__ == '__main__':

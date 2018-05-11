@@ -1,9 +1,11 @@
 ---
+- name: Remove /sysbench directory
+  file:
+    state: absent
+    path: /sysbench
+
 - name: Destroying sysbench container
   docker_container:
     name: "sysbench"
     state: absent
     force_kill: yes
-  when:
-    - '"stress" in tasks_ran'
-    - inventory_hostname == dbmaster_node

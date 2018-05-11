@@ -19,7 +19,7 @@
     login_password: my-secret-pw
     state: absent
   when:
-    - db == 'mariadb'
+    - (db == 'mariadb' or db == 'galera')
     - inventory_hostname == dbmaster_node
 
 - name: Install CockroachDB SQLAlchemy Dialect + Updated version of sqlalchemy-migrate
@@ -57,6 +57,15 @@
   become: true
   become_user: stack
 
+- name: Patching devstack (Add support to personally deployed mariadb)
+  template:
+    src: lib-mariadb.j2
+    dest: /opt/stack/devstack/lib/databases/mariadb
+    owner: stack
+  become: true
+  become_user: stack
+  when:
+    - db == 'mariadb'
 
 - name: Patching devstack (Add support to cockroachdb database)
   template:
@@ -70,13 +79,13 @@
 
 - name: Patching devstack (Add support to mariadb-galera database)
   template:
-    src: lib-mariadb.j2
-    dest: /opt/stack/devstack/lib/databases/mariadb
+    src: lib-galera.j2
+    dest: /opt/stack/devstack/lib/databases/galera
     owner: stack
   become: true
   become_user: stack
   when:
-    - db == 'mariadb'
+    - db == 'galera'
 
 - name: Patching devstack (Remove keystone bootstrapping)
   template:

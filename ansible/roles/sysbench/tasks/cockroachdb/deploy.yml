@@ -1,0 +1,8 @@
+---
+- name: Create CockroachDB sbtest database for sysbench
+  postgresql_db:
+    name: sbtest
+    login_host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
+    login_user: root
+    port: 26257
+    state: present

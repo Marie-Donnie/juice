@@ -31,29 +31,39 @@
         tags: grafana,
         when: enable_monitoring | bool }
 
-- name: CockroachDB master deployment
-  hosts:
-    - database
-  roles:
-    - { role: cockroachdb,
-        tags: cockroachdb,
-        when: db == "cockroachdb" }
-
-- name: MariaDB master deployment
-  hosts:
-    - database
+- name: MariaDB deployment
+  hosts: database_master
   roles:
     - { role: mariadb,
         tags: mariadb,
         when: db == "mariadb" }
 
+- name: CockroachDB deployment
+  hosts: database
+  roles:
+    - { role: cockroachdb,
+        tags: cockroachdb,
+        when: db == "cockroachdb" }
+
+- name: Galera deployment
+  hosts: database
+  roles:
+    - { role: galera,
+        tags: galera,
+        when: db == "galera" }
+
 - name: Install monitoring agents
-  hosts:
-    - database
+  hosts: database
   roles:
     - { role: cadvisor,
         tags: cadvisor,
         when: enable_monitoring | bool  }
     - { role: collectd,
         tags: collectd,
-        when: (db == "mariadb") and (enable_monitoring | bool) }
+        when: (db == "mariadb" or db == "galera") and (enable_monitoring | bool) }
+
+- name: Sysbench deployment
+  hosts: database
+  roles:
+    - { role: sysbench,
+        tags: sysbench }
