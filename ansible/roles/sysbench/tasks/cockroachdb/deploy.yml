@@ -1,8 +1,9 @@
 ---
 - name: Create CockroachDB sbtest database for sysbench
-  postgresql_db:
-    name: sbtest
-    login_host: "{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
-    login_user: root
-    port: 26257
-    state: present
+  command: >
+    docker exec cockroachdb-{{ inventory_hostname_short }}
+           ./cockroach sql
+               --execute "CREATE DATABASE IF NOT EXISTS sbtest ENCODING = 'UTF8'"
+               --insecure
+  when:
+    - inventory_hostname == dbmaster_node
