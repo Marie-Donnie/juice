@@ -5,30 +5,34 @@ import logging
 import os
 import math
 from pprint import pformat
+import traceback
 
 import juice as j
 from execo_engine.sweep import (ParamSweeper, sweep)
 
-SWEEPER_DIR = os.path.join(os.getenv('HOME'), 'juice-sweeper')
+SWEEPER_DIR = os.path.join(os.getenv('HOME'), 'juice-sweeper-cockroach')
 
-JOB_NAME = 'test'
-# WALLTIME = '4:18:00'
+JOB_NAME = 'juice-tests-WE'
+# WALLTIME = '08:18:00'
 # WALLTIME = '44:55:00'
-WALLTIME = '3:00:00'
+WALLTIME = '16:59:58'
 RESERVATION = None
-# RESERVATION = '2018-04-25 19:00:01'
+# RESERVATION = '2018-05-13 16:00:00'
 
 # DATABASES = ['cockroachdb']
 DATABASES = ['cockroachdb']
-CLUSTER_SIZES = [10]
+CLUSTER_SIZES = [9]
 # CLUSTER_SIZES = [3, 25, 45, 100]
-DELAYS = [0]
+DELAYS = [150]
 # DELAYS = [0]
 
 CLUSTER = 'ecotype'
 SITE = 'nantes'
 
 MAX_CLUSTER_SIZE = max(CLUSTER_SIZES)
+
+REPLICAS_QUORUM = 3
+NODES_PER_GROUP = 3
 
 
 CONF = {
@@ -70,7 +74,7 @@ CONF = {
                                    'ceph2.rennes.grid5000.fr'],
                  'ceph_rbd': 'discovery_kolla_registry/datas',
                  'type': 'none'},
-    'tc': {'constraints': [{'delay': '0ms',
+    'tc': {'constraints': [{'delay': '10ms',
                             'src': 'database',
                             'dst': 'database',
                             'loss': 0,
@@ -121,17 +125,16 @@ def teardown():
 
 def conf_group(conf, combination):
     nb_nodes = combination['db-nodes']
-    groups = range(int(math.ceil(nb_nodes/5)))
+    groups = range(int(math.ceil(nb_nodes/NODES_PER_GROUP)))
     machines = [{'cluster': 'ecotype',
                  'nodes': 1,
                  'roles': ['registry', 'control'],
                  'primary_network': 'n0',
                  'secondary_networks': ['n1']}]
     for i in groups:
-        nodes_per_group = (3 if (nb_nodes == 3) else 5)
         group = 'database' + str(i)
         machines.append({'cluster': CLUSTER,
-                         'nodes': nodes_per_group,
+                         'nodes': NODES_PER_GROUP,
                          'roles': ['chrony',
                                    group,
                                    'sysbench',
@@ -163,6 +166,29 @@ def tc_groups(conf, groups, delay):
     print(conf['tc'])
 
 
+def replicas(conf, combination):
+    nb_nodes = combination['db-nodes']
+    groups = range(int(math.ceil(nb_nodes/3)))
+    replicas_list = []
+    for db in groups:
+        if db == 0:
+            replicas_list.append(REPLICAS_QUORUM)
+        elif db == 1:
+            if REPLICAS_QUORUM == 3:
+                replicas_list.append(0)
+            else:
+                replicas_list.append(1)
+        elif db == 2:
+            if REPLICAS_QUORUM == 1:
+                replicas_list.append(1)
+            else:
+                replicas_list.append(0)
+        else:
+            replicas_list.append(0)
+    print(replicas_list)
+    conf['quorum'] = replicas_list
+    return replicas_list
+
 def keystone_exp():
     sweeper = ParamSweeper(
         SWEEPER_DIR,
@@ -185,8 +211,8 @@ def keystone_exp():
             conf['tc']['constraints'][0]['delay'] = delay
             groups = conf_group(conf, combination)
             tc_groups(conf, groups, delay)
+            replicas(conf, combination)
             db = combination['db']
-            locality = False
             xp_name = "%s-%s-%s" % (db, combination['db-nodes'], delay)
 
             # Let's get it started hun!
@@ -205,6 +231,7 @@ def keystone_exp():
           # a later retry
             logging.error("Combination %s Failed with message %s" % (pformat(combination), e))
             sweeper.cancel(combination)
+            traceback.print_exc()
 
         finally:
             teardown()

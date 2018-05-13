@@ -3,7 +3,7 @@ registry:
 
 g5k:
   # reservation: "2018-03-12 19:00:01"
-  walltime: "09:00:00"
+  walltime: "05:00:00"
   dhcp: true
   job_name: juice-tests
   env_name: debian9-x64-nfs
@@ -15,8 +15,8 @@ g5k:
           - sysbench
           - openstack
           - rally
-        cluster: grisou
-        nodes: 2
+        cluster: ecotype
+        nodes: 9
         primary_network: n1
         secondary_networks: [n2]
       - roles:
@@ -24,7 +24,7 @@ g5k:
           # - influxdb
           # - grafana
           # - chrony-server
-        cluster: grisou
+        cluster: ecotype
         nodes: 1
         primary_network: n1
         secondary_networks: []
@@ -33,11 +33,11 @@ g5k:
         roles:
           - control_network
         type: prod
-        site: nancy
+        site: nantes
       - id: n2
         roles:
           - database_network
         type: kavlan
-        site: nancy
+        site: nantes
 
 enable_monitoring: true

@@ -5,4 +5,4 @@
   roles:
     - { role: rally,
         tags: rally,
-        when: inventory_hostname in rally_nodes }
+        when: inventory_hostname == dbmaster_node }

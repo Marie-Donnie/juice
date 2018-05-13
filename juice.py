@@ -150,7 +150,8 @@ Configure the resources, requires both g5k and inventory executions
         "registry": env["config"]["registry"],
         "db": db,
         # Set monitoring to True by default
-        "enable_monitoring": env['config'].get('enable_monitoring', True)
+        "enable_monitoring": env['config'].get('enable_monitoring', True),
+        "quorum": env['config'].get('quorum', []),
     }
     env["db"] = db
     # use deploy of each role
@@ -196,6 +197,7 @@ Launch OpenStack
     extra_vars = {
         "registry": env["config"]["registry"],
         "db": db,
+        "quorum": env['config'].get('quorum', []),
     }
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})

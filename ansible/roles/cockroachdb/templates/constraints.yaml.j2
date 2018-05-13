@@ -1,0 +1,1 @@
+constraints: { {% for group in groups if 'database' in group %}{% if quorum[loop.index0] != 0 %}"+region={{ group }}": {{ quorum[loop.index0] }}{% if not loop.last %}, {% endif %}{% endif %}{% endfor %} }

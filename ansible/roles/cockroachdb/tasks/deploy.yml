@@ -5,9 +5,6 @@
     path: "/database/"
     state: directory
 
-# See https://www.cockroachlabs.com/docs/stable/start-a-local-cluster-in-docker.html
-# See https://www.cockroachlabs.com/docs/stable/demo-follow-the-workload.html for locality
-
 - name: Mount /database
   mount:
     path: /database
@@ -16,11 +13,13 @@
     state: mounted
     opts: size=16G
 
+# See https://www.cockroachlabs.com/docs/stable/start-a-local-cluster-in-docker.html
+# See https://www.cockroachlabs.com/docs/stable/demo-follow-the-workload.html for locality
+
 - name: Start the first cockroachdb node
   docker_container:
     name: "cockroachdb-{{ inventory_hostname_short }}"
     image: "cockroachdb/cockroach:v2.0.1"
-    # hostname: "{{ inventory_hostname }}"
     detach: True
     ports:
       - 26257:26257
@@ -30,7 +29,7 @@
     command: >
       start --insecure
       --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
-      {% if 'database' in item %}--locality=region={{ item }},datacenter={{ inventory_hostname_short }}{% endif %}
+      {% for group in group_names if 'database' in group %}--locality=region={{ group }},datacenter={{ inventory_hostname_short }}{% endfor %}
   when:
     - inventory_hostname == dbmaster_node
   loop: "{{ group_names }}"
@@ -56,10 +55,9 @@
       start --insecure
       --join="{{ hostvars[dbmaster_node]['ansible_'+ database_network].ipv4.address }}"
       --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
-      {% if 'database' in item %}--locality=region={{ item }},datacenter={{ inventory_hostname_short }}{% endif %}
+      {% for group in group_names if 'database' in group %}--locality=region={{ group }},datacenter={{ inventory_hostname_short }}{% endfor %}
   when:
     - inventory_hostname != dbmaster_node
-  loop: "{{ group_names }}"
 
 - name: Waiting for databases to be ready
   wait_for:
@@ -67,3 +65,10 @@
     port: 26257
   when:
     - inventory_hostname != dbmaster_node
+
+- name: Adding the constraints file
+  template:
+    src: constraints.yaml.j2
+    dest: /database/constraints.yaml
+  when:
+    - inventory_hostname == dbmaster_node

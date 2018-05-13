@@ -132,3 +132,10 @@
   become: true
   become_user: stack
   when: inventory_hostname != dbmaster_node
+
+- name: Applying constraints on Keystone database
+  command: >
+    docker exec -i "cockroachdb-{{ inventory_hostname_short }}" ./cockroach zone set keystone --insecure -f /cockroach/cockroach-data/constraints.yaml
+  when:
+    - inventory_hostname == dbmaster_node
+    - db == 'cockroachdb'
