@@ -15,7 +15,7 @@ query_cache_type=0
 [galera]
 wsrep_on=ON
 wsrep_provider="/usr/lib/galera/libgalera_smm.so"
-wsrep_cluster_address="gcomm://{% for it in item %}{{ hostvars[it]['ansible_' + database_network]['ipv4']['address'] }}{% if not loop.last %},{% endif%}{% endfor %}"
+wsrep_cluster_address="gcomm://{% for group in groups['all'] if group not in groups['control'] %}{{ hostvars[group]['ansible_' + database_network]['ipv4']['address'] }}{% if not loop.last %},{% endif%}{% endfor %}"
 wsrep-sst-method=rsync
 
 # https://mariadb.com/kb/en/library/galera-cluster-system-variables/#wsrep_sync_wait
