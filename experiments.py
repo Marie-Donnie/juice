@@ -10,28 +10,28 @@ import traceback
 import juice as j
 from execo_engine.sweep import (ParamSweeper, sweep)
 
-SWEEPER_DIR = os.path.join(os.getenv('HOME'), 'juice-sweeper-cockroach')
+SWEEPER_DIR = os.path.join(os.getenv('HOME'), 'juice-sweeper-maria')
 
-JOB_NAME = 'juice-tests-WE'
+JOB_NAME = 'juice-tests-groups'
 # WALLTIME = '08:18:00'
 # WALLTIME = '44:55:00'
-WALLTIME = '16:59:58'
+WALLTIME = '23:59:58'
 RESERVATION = None
 # RESERVATION = '2018-05-13 16:00:00'
 
-# DATABASES = ['cockroachdb']
 DATABASES = ['cockroachdb']
+# DATABASES = ['mariadb']
 CLUSTER_SIZES = [9]
 # CLUSTER_SIZES = [3, 25, 45, 100]
 DELAYS = [150]
 # DELAYS = [0]
+REPLICAS_QUORUM = [3, 2, 1]
 
 CLUSTER = 'ecotype'
 SITE = 'nantes'
 
 MAX_CLUSTER_SIZE = max(CLUSTER_SIZES)
 
-REPLICAS_QUORUM = 3
 NODES_PER_GROUP = 3
 
 
@@ -82,7 +82,8 @@ CONF = {
                             "network": "database_network"}],
            'default_delay': '0ms',
            'default_rate': '10gbit',
-           'enable': True}
+           'enable': True},
+    'replicas_quorum': REPLICAS_QUORUM
 }
 
 SCENARIOS = [
@@ -104,7 +105,7 @@ def init():
         j.g5k(config=CONF)
         j.inventory()
         # j.destroy()
-        # j.emulate(CONF['tc'])
+        j.emulate(CONF['tc'])
     except Exception as e:
         logging.error(
             "Setup went wrong. This is not necessarily a bad news, "
@@ -115,7 +116,7 @@ def init():
 def teardown():
     try:
         j.destroy()
-        j.emulate(CONF['tc'])
+        # j.emulate(CONF['tc'])
     except Exception as e:
         logging.warning(
             "Setup goes wrong. This is not necessarily a bad news, "
@@ -168,18 +169,19 @@ def tc_groups(conf, groups, delay):
 
 def replicas(conf, combination):
     nb_nodes = combination['db-nodes']
-    groups = range(int(math.ceil(nb_nodes/3)))
+    groups = range(int(math.ceil(nb_nodes/NODES_PER_GROUP)))
+    replicas_quorum = combination['replicas_quorum']
     replicas_list = []
     for db in groups:
         if db == 0:
-            replicas_list.append(REPLICAS_QUORUM)
+            replicas_list.append(replicas_quorum)
         elif db == 1:
-            if REPLICAS_QUORUM == 3:
+            if replicas_quorum == 3:
                 replicas_list.append(0)
             else:
                 replicas_list.append(1)
         elif db == 2:
-            if REPLICAS_QUORUM == 1:
+            if replicas_quorum == 1:
                 replicas_list.append(1)
             else:
                 replicas_list.append(0)
@@ -196,6 +198,7 @@ def keystone_exp():
               'db':    DATABASES
             , 'delay': DELAYS
             , 'db-nodes': CLUSTER_SIZES
+            , 'replicas_quorum': REPLICAS_QUORUM
         }))
 
     while sweeper.get_remaining():
@@ -209,11 +212,16 @@ def keystone_exp():
             # conf['g5k']['resources']['machines'][0]['nodes'] = combination['db-nodes']
             delay = "%sms" % combination['delay']
             conf['tc']['constraints'][0]['delay'] = delay
+            replicas_quorum = "%s" % combination['replicas_quorum']
+            conf['replicas_quorum'] = replicas_quorum
+            # Configuring groups
             groups = conf_group(conf, combination)
+            # Configurating latency between groups and in the groups
             tc_groups(conf, groups, delay)
+            # Configuring replicas for database
             replicas(conf, combination)
             db = combination['db']
-            xp_name = "%s-%s-%s" % (db, combination['db-nodes'], delay)
+            xp_name = "%s-%s-%s-%s" % (db, combination['db-nodes'], delay, replicas_quorum)
 
             # Let's get it started hun!
             j.deploy(conf, db, xp_name)
