@@ -223,7 +223,7 @@ Benchmark the Openstack
                     reduce(operator.add, [ hosts for role, hosts in env['roles'].iteritems()
                                            if role.startswith('database') ]))
     else:
-        rally = [ hosts[0].address for role, hosts in env['roles'].iteritems()
+        rally = [ hosts[1].address for role, hosts in env['roles'].iteritems()
                   if role.startswith('database') ]
     env['rally_nodes'] = rally
     extra_vars = {
