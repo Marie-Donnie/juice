@@ -96,7 +96,7 @@ Options:
 
     db_validation(db)
 
-    g5k(env=xp_name, config=config)
+    g5k(env=xp_name, config=config, **kwargs)
     time.sleep(30)
     inventory()
     prepare(db=db)

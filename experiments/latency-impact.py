@@ -93,7 +93,7 @@ logging.basicConfig(level=logging.INFO)
 
 def init():
   try:
-    j.g5k(config=CONF)
+    j.g5k(config=CONF, force=True)
     j.inventory()
     j.destroy()
     j.emulate(CONF['tc'])
