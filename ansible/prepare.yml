@@ -38,19 +38,12 @@
         tags: mariadb,
         when: db == "mariadb" }
 
-- name: CockroachDB deployment
-  hosts: database
-  roles:
-    - { role: cockroachdb,
-        tags: cockroachdb,
-        when: db == "cockroachdb" }
-
-- name: Galera deployment
-  hosts: database
-  roles:
-    - { role: galera,
-        tags: galera,
-        when: db == "galera" }
+- name: "{{ db }} deployment"
+ hosts: database
+ roles:
+   - { role: database,
+       tags: {{ db }},
+       when: db != "mariadb" }
 
 - name: Install monitoring agents
   hosts: database
