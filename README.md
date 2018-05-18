@@ -1,6 +1,6 @@
 # juice
 
-A tool to test OpenStack with MariaDB and CockroachDB using [enoslib](https://github.com/BeyondTheClouds/enoslib)
+A tool to test the performance of MariaDB, Galera and CockroachDB with OpenStack using [enoslib](https://github.com/BeyondTheClouds/enoslib)
 
 
 ## Installation
@@ -17,11 +17,13 @@ virtualenv venv
 source venv/bin/activate
 pip install -U pip
 pip install -r requirements.txt
+
 ```
 
 ## Configuration
 
-Change *conf.yaml* according to your needs.
+There is a sample configuration you can use `cp conf.yaml.sample conf.yaml`
+You can then change *conf.yaml* according to your needs.
 
 ## Launch
 
@@ -29,7 +31,13 @@ Launch with `./juice.py deploy` or `./juice.py deploy --db=<db>` with db being '
 
 Once it has been launched, you can destroy the containers using `./juice destroy` and then restart them with `./juice prepare --db=<db>`.
 
-If you want to use the [follow-the-workload](https://www.cockroachlabs.com/blog/follow-the-workload/) feature for CockroachDB, you can add `--locality` to your deployment.
+## Full experiment
+
+In the experiments folder you'll find different scenarios you can tweak to accomodate to your needs. For example, if you want to test the impact of latency on the cluster:
+```bash
+cd experiments
+python latency-impact.py
+```
 
 ### Getting information about the used environment
 
@@ -39,7 +47,7 @@ Use `./juice.py info` to get informations about current environment. You can for
 
 #### Sysbench
 
-You can launch sysbench tests afterwards using `./juice stess --db=<db>`.
+You can launch sysbench tests afterwards using `./juice stress --db=<db>`.
 
 #### Rally (CockroachDB only for now)
 
@@ -61,14 +69,40 @@ To monitor activity on your databases:
    * [Service - MySQL Metrics](https://grafana.com/dashboards/561) provides performance metrics for MariaDB
    * For cAdvisor, you have to make your own dashboards using whatever metrics you need because the one made for cAdvisor/InfluxDB does not work with Juice
 
+### Emulate
+
+You can emulate different constraints on the network with emulate by changing the *juice.py* (or directly in the experiment file if you use one). The constraints look like that:
+```python
+tc = {
+    "enable": True,
+    "default_delay": "0ms",
+    "default_rate": "10gbit",
+    "constraints": [{
+        "src": "database",
+        "dst": "database",
+        "delay": "0ms",
+        "rate": "10gbit",
+        "loss": "0",
+        "network": "database_network",
+    }],
+    "groups": ['database'],
+}
+```
+The *constraints* are applicable to a specific network (network) for different roles (src and dst). You can change the delay, rate and packet loss of the network. There are also global choices for the network, with a default delay and rate, applicable if need be on specific roles.
+
+
 ### Backup
 
 Backup important metrics using `./juice.py backup`.
 
+### Destroy
+
+The destroy tasks, called with `./juice.py destroy` removes all dockers and unmount volumes.
+
 ## Help
 
 ```
-Tool to test Keystone over Galera and CockroachdB on Grid'5000 using Enoslib
+Tool to test the performances of MariaDB, Galera and CockroachdB with OpenStack on Grid'5000 using Enoslib
 
 Usage:
     juice [-h | --help] [-v | --version] <command> [<args>...]
@@ -83,6 +117,7 @@ Commands:
     info           Show information of the actual deployment
     inventory      Generate the Ansible inventory file
     prepare        Configure the resources
+	emulate        Emulate network using tc
     stress         Launch sysbench tests (after a deployment)
     openstack      Add OpenStack Keystone to the deployment
     rally          Benchmark the Openstack

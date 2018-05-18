@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-"""Tool to test Keystone over Galera and CockroachdB on Grid'5000 using Enoslib
+"""Tool to test the performances of MariaDB, Galera and CockroachdB with
+OpenStack on Grid'5000 using Enoslib
 
 Usage:
     juice [-h | --help] [-v | --version] <command> [<args>...]
@@ -27,16 +28,15 @@ Run 'juice COMMAND --help' for more information on a command
 
 import os
 import logging
-import yaml
 import sys
 import time
-
-from docopt import docopt
 import pprint
+import yaml
 import json
 import operator
 import pickle
-import yaml
+
+from docopt import docopt
 from enoslib.api import (run_ansible, generate_inventory,
                          emulate_network, validate_network)
 from enoslib.task import enostask
@@ -155,7 +155,8 @@ Configure the resources, requires both g5k and inventory executions
     env["db"] = db
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
-    run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")],
+                env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('prepare')
 
 
@@ -177,7 +178,8 @@ Launch sysbench tests
         "enos_action": "stress"
     }
     # use deploy of each role
-    run_ansible([os.path.join(JUICE_PATH, "ansible/stress.yml")], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/stress.yml")],
+                env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('stress')
 
 
@@ -199,7 +201,8 @@ Launch OpenStack
     }
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
-    run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")],
+                env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('openstack')
 
 
@@ -211,20 +214,24 @@ usage: juice rally [--files FILE... | --directory DIRECTORY] [--burst]
 
 Benchmark the Openstack
 
-  --files FILE           Files to use for rally scenarios (name must be a path from rally scenarios folder).
-  --directory DIRECTORY  Directory that contains rally scenarios. [default: keystone]
+  --files FILE           Files to use for rally scenarios (name must be a path
+from rally scenarios folder).
+  --directory DIRECTORY  Directory that contains rally scenarios. [default:
+keystone]
   --burst                Use burst or not
     """
-    logging.info("Launching rally using scenarios: %s" % ( ', '.join(files)))
-    logging.info("Launching rally using all scenarios in %s directory.", directory)
+    logging.info("Launching rally using scenarios: %s" % (', '.join(files)))
+    logging.info("Launching rally using all scenarios in %s directory.",
+                 directory)
 
     if burst:
         rally = map(operator.attrgetter('address'),
-                    reduce(operator.add, [ hosts for role, hosts in env['roles'].iteritems()
-                                           if role.startswith('database') ]))
+                    reduce(operator.add,
+                           [hosts for role, hosts in env['roles'].iteritems()
+                            if role.startswith('database')]))
     else:
-        rally = [ hosts[1].address for role, hosts in env['roles'].iteritems()
-                  if role.startswith('database') ]
+        rally = [hosts[1].address for role, hosts in env['roles'].iteritems()
+                 if role.startswith('database')]
     env['rally_nodes'] = rally
     extra_vars = {
         "registry": env["config"]["registry"],
@@ -237,7 +244,8 @@ Benchmark the Openstack
 
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
-    run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")],
+                env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('rally')
 
 
@@ -312,15 +320,20 @@ Backup the environment, requires g5k, inventory and prepare executions
     latency = env["latency"]
     extra_vars = {
         "enos_action": "backup",
-        "backup_dir": os.path.join(os.getcwd(), "current/backup/%snodes-%s-%s" % (nb_nodes, db, latency)),
-        "tasks_ran" : env["tasks_ran"],
+        "backup_dir": os.path.join(os.getcwd(),
+                                   "current/backup/%snodes-%s-%s"
+                                   % (nb_nodes, db, latency)),
+        "tasks_ran": env["tasks_ran"],
         # Set monitoring to True by default
         "enable_monitoring": env['config'].get('enable_monitoring', True),
         "rally_nodes": env.get('rally_nodes', [])
     }
-    run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")], env["inventory"], extra_vars=extra_vars)
-    run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")], env["inventory"], extra_vars=extra_vars)
-    run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")],
+                env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")],
+                env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")],
+                env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('backup')
 
 
@@ -338,14 +351,17 @@ and inventory executions
     extra_vars.update({
         "enos_action": "destroy",
         "db": env.get('db', 'cockroachdb'),
-        "tasks_ran" : env["tasks_ran"],
+        "tasks_ran": env["tasks_ran"],
         # Set monitoring to True by default
         "enable_monitoring": env['config'].get('enable_monitoring', True),
-         "rally_nodes": env.get('rally_nodes', [])
+        "rally_nodes": env.get('rally_nodes', [])
     })
-    run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")], env["inventory"], extra_vars=extra_vars)
-    run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")], env["inventory"], extra_vars=extra_vars)
-    run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")], env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")],
+                env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")],
+                env["inventory"], extra_vars=extra_vars)
+    run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")],
+                env["inventory"], extra_vars=extra_vars)
     env["tasks_ran"].append('destroy')
 
 
