@@ -1,0 +1,2119 @@
+# -*- org-confirm-babel-evaluate: nil; -*-
+#+TITLE: Juice Notebook
+#+AUTHOR: Marie Delavergne, Ronan-Alexandre Cherrueau, Adrien Lebre
+#+EMAIL: {firstname.lastname}@inria.fr
+#+DATE: <2018>
+
+#+LANGUAGE: en
+#+OPTIONS: email:t
+#+OPTIONS: ^:{}
+#+OPTIONS: broken-links:mark
+#+OPTIONS: toc:nil
+
+#+PROPERTY: header-args:python  :session default
+#+PROPERTY: header-args:python+ :cache no
+#+PROPERTY: header-args:python+ :var SNS_CONTEXT="paper"
+# #+PROPERTY: header-args:python+ :exports both  # export contains code + result see [[info:org#Exporting%20code%20blocks][info:org#Exporting code blocks]]
+# #+PROPERTY: header-args:python+ :results output
+
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="timeline.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.css">
+#+HTML_HEAD: <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha256-3edrmyuQ0w65f8gfBsqowzjJe2iM6n0nKciPUp8y+7E=" crossorigin="anonymous"></script>
+#+HTML_HEAD: <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.js"></script>
+
+#+BEGIN_abstract
+OpenStack is the /de facto/ open source solution for the management of
+cloud infrastructures and emerging solution for edge infrastructures
+(/i.e./, hundreds of geo-distributed micro DCs composed of dozens of
+servers). Unfortunately, some modules used by OpenStack services do
+not fulfill edge infrastructure needs. For instance, core services use
+the MariaDB Relational Database Management System (RDBMS) to store
+their state. And a single MariaDB may not cope with thousands of
+connections and intermittent network access. Therefore, is OpenStack
+technically ready for the management of an edge infrastructure? To
+find this out, we built /Juice/. Juice tests and evaluates the
+performance of Relational Database Management Systems (RDBMS) in the
+context of a distributed OpenStack with high latency network. The
+following notebook presents performance tests results together with an
+analyze of these results for three RDBMS: MariaDB, the OpenStack
+default RDBMS; Galera, the multi-master clustering solution for
+MariaDB; And CockroachDB, a NewSQL system that leverage distributed
+consensus algorithms to scale.
+#+END_abstract
+
+#+TOC: headlines 1
+
+* Table of Contents                                          :TOC@3:noexport:
+ - [[#introduction][Introduction]]
+ - [[#considered-databases][Considered Databases]]
+   - [[#mariadb][MariaDB]]
+   - [[#galera-in-multi-master-replication-mode][Galera in multi-master replication mode.]]
+   - [[#cockroachdb-abbr-crdb][CockroachDB (/abbr./ CRDB).]]
+ - [[#considered-openstack-services][Considered OpenStack Services]]
+ - [[#experiment-parameters][Experiment Parameters]]
+   - [[#openstack-instances][OpenStack instances]]
+   - [[#rdbms-deployment-options][RDBMS deployment options]]
+   - [[#delay][Delay]]
+   - [[#locality][Locality]]
+     - [[#delay-distribution-uniform--hierarchical][Delay distribution: uniform & hierarchical]]
+ - [[#load-rally-scenarios][Load: Rally Scenarios]]
+   - [[#a-typical-rally-execution][A typical Rally execution]]
+   - [[#low-and-high-load][Low and high load]]
+   - [[#list-of-rally-scenarios][List of Rally scenarios]]
+   - [[#a-note-about-gauging-the-readswrites-ratio][A note about gauging the %reads/%writes ratio]]
+ - [[#extract-reify-query-experiments-and-their-rally-results][Extract, Reify, Query Experiments and their Rally Results]]
+   - [[#from-json-files-to-python-objects][From Json files to Python Objects]]
+     - [[#mariadb-experiments][MariaDB experiments]]
+     - [[#galera-experiments][Galera experiments]]
+     - [[#cockroachdb-experiments][CockroachDB experiments]]
+   - [[#query-rally-results][Query Rally Results]]
+ - [[#cluster-size-impact][Cluster Size Impact]]
+   - [[#single][Single]]
+     - [[#cumulative-frequency-distribution][Cumulative Frequency Distribution]]
+   - [[#high][High]]
+     - [[#mean-of-keystone-operations][Mean of Keystone Operations]]
+     - [[#cumulative-frequency-distribution-1][Cumulative Frequency Distribution]]
+ - [[#delay-impact][Delay Impact]]
+   - [[#throughput-expectations][Throughput Expectations]]
+   - [[#single-1][Single]]
+     - [[#mean-of-keystone-operations-1][Mean of Keystone Operations]]
+     - [[#linear-regression][Linear Regression]]
+     - [[#cumulative-frequency-distribution-2][Cumulative Frequency Distribution]]
+   - [[#high-1][High]]
+     - [[#mean-of-keystone-operations-2][Mean of Keystone Operations]]
+     - [[#cumulative-frequency-distribution-3][Cumulative Frequency Distribution]]
+ - [[#locality-impact][Locality Impact]]
+   - [[#results][Results]]
+     - [[#mean-of-keystone-operations-3][Mean of Keystone Operations]]
+     - [[#cumulative-frequency-distribution-4][Cumulative Frequency Distribution]]
+ - [[#do-the-size-of-the-database-matter][Do the size of the Database matter?]]
+ - [[#appendix][Appendix]]
+   - [[#detailed-rally-scenarios][Detailed Rally scenarios]]
+     - [[#keystoneauthenticate-user-and-validate-token][keystone/authenticate-user-and-validate-token]]
+     - [[#keystonecreate-add-and-list-user-roles][keystone/create-add-and-list-user-roles]]
+     - [[#keystonecreate-and-list-tenants][keystone/create-and-list-tenants]]
+     - [[#keystoneget-entities][keystone/get-entities]]
+     - [[#keystonecreate-user-update-password][keystone/create-user-update-password]]
+     - [[#keystonecreate-user-set-enabled-and-delete][keystone/create-user-set-enabled-and-delete]]
+     - [[#keystonecreate-and-list-users][keystone/create-and-list-users]]
+ - [[#footer][Footer]]
+
+* Prelude                                                          :noexport:
+#+BEGIN_SRC python :results silent
+# From standard lib
+from typing import (Dict, Union, Iterator,
+                    Callable, List, Tuple,
+                    TypeVar, Generic) # Type annoation
+
+T = TypeVar('T')
+U = TypeVar('U')
+
+from collections import OrderedDict
+import glob                  # Unix style pathname
+import itertools as itt
+from operator import *
+from functools import reduce
+import re
+import json
+import textwrap
+
+# Other libs
+from dataclasses import dataclass   # Dataclass à la python 3.7
+import objectpath                   # XPath for json
+import pandas as pd                 # Data series analyses
+import numpy as np
+import matplotlib                   # Ploting
+import matplotlib.pyplot as plt     # ^
+import seaborn as sns               # ^
+import functional                   # For my sanity
+from functional import seq          # ^
+from functional.util import compose # ^
+
+# -- Utils
+class Either(Generic[T, U]):
+    left:  T  # An error occured
+    right: U  # Everything is right
+    #
+    def __init__(self, left=None, right=None):
+        self.left = left
+        self.right = right
+    #
+    def __bool__(self):
+        return self.right != None
+
+def Left(error: T) -> Either[T, U]:
+    return Either(left=error, right=None)
+
+def Right(ok: U) -> Either[T, U]:
+    return Either(left=None, right=ok)
+
+def isLeft(e: Either[T, U]) -> bool:
+    return bool(e)
+
+def isRight(e: Either[T, U]) -> bool:
+    return not isLeft(e)
+
+def normalize_series(scn: str, s: pd.Series) -> pd.Series:
+    "Ensures that all operations of a scenario are present in `s`"
+    operations = RALLY[scn]['operations']
+    news = pd.Series()
+    for op in operations:
+        if op in s.index:
+            news = news.append(s.loc[[op]])
+        else:
+            news = news.append(pd.Series({op: np.nan}))
+    return news
+
+def make_series(scn: 'xp.scenario') -> pd.Series:
+    "Builds a pd.Series with operations of `scn` in index"
+    operations = RALLY[scn]['operations']
+    return pd.Series(np.nan, index=operations)
+
+def make_dataframe(scn: 'xp.scenario') -> pd.DataFrame:
+    "Builds a pd.DataFrame with operations of `scn` in column"
+    operations = RALLY[scn]['operations']
+    iterations = RALLY[scn]['iterations']
+    #
+    return pd.DataFrame.from_dict({
+        op: pd.Series(np.nan, index=range(iterations)) for op in  operations
+    })
+
+def make_xps(scn, rdbms, oss, delay, high, number) -> List['XP']:
+    "Builds a list with `number` crashed XP"
+    df = make_dataframe(scn)
+    return [ XP(scenario=scn, filepath='', rdbms=rdbms, oss=oss,
+              delay=delay, success=0, high=high, dataframe=df)
+             for i in range(number) ]
+
+def make_cumulative_frequency(s: pd.Series) -> pd.Series:
+    "Performed a Cumulative Frequency Analysis"
+    cum_dist = np.linspace(0.,1.,len(s))
+    return pd.Series(cum_dist, index=s.sort_values())
+
+def success_rate(rally_values) -> float:
+    "Returns success rate of a Rally scenario"
+    JPATH_STATUS  = '$.tasks[0].status'
+    JPATH_SUCCESS = '$.tasks[0].subtasks[0].workloads[0].statistics.durations.total.data.success'
+    success = 0
+    # Rally status is either finished or crashed. In case of crashed,
+    # the json contains no information about the scenarion execution.
+    if rally_values.execute(JPATH_STATUS) == 'finished':
+        # Rally success values is either:
+        # - 'n/a' if the execution of the scenario failed
+        # - A string that forms a percentage (e.g., '95.5%')
+        success_str = rally_values.execute(JPATH_SUCCESS)
+        if success_str.endswith('%'):
+            success = round(float(success_str[:-1]) / 100., 2)
+    #
+    return success
+
+def debug(t):
+    "Debug in a λ"
+    print(t)
+    return t
+
+def savefig(fig, filepath) -> 'filepath.svg':
+    fig.savefig(filepath + '.svg')
+    fig.savefig(filepath + '.pdf')
+    fig.savefig(filepath + '.png')
+    #
+    return filepath + '.svg'
+
+def df2orgtable(df: pd.DataFrame, index_name="") -> List[List[str]]:
+    """
+    Formats a 2d pandas DataFrame into in a org table.
+
+    The optional `index_name` let you label indices.
+    """
+    columns = df.axes[1].values.tolist() # columns names
+    indices = df.axes[0].values.tolist() # row labels
+    rows    = df.values.tolist()         # rows
+    # Put indeces in front of each row
+    for index, r in enumerate(rows):
+        r = list(map(lambda v: f'{v:.3f}', r))
+        r.insert(0, indices[index])
+        rows[index] = r
+        #
+    columns.insert(0, index_name)  # Id name in front of col names
+    rows.insert(0, None)         # put a hline
+    rows.insert(0, columns)      # put rows
+    return rows
+
+def df2orgtablestr(obj: Tuple['scenario', 'df_mean', 'df_std']) -> str:
+    "Same as `df2orgtable` but produces a string"
+    scn, df_mean, df_std = obj
+    scn_short = textwrap.shorten((scn.replace('KeystoneBasic.', '')
+                                  .replace('_', ' ')
+                                  .title()),
+                                 width=20,
+                                 placeholder='...')
+    df = df_mean.assign(std=df_std)
+    res  = f'#+CAPTION: {scn}\n'
+    res += f'#+NAME: tbl:{scn}\n'
+    #
+    for r in df2orgtable(df, scn_short):
+        if r is None:
+            res += "|--\n"
+        else:
+            res += "|" + reduce(add, intersperse_("|", map(str, r))) + "|\n"
+            #
+    return res
+
+def xp2orgtable(xps: List['XP']) -> List[List[str]]:
+    def xp2orgtablerow(xp) -> List[str]:
+        "Format an `XP` into a org table row."
+        delay = "LAN" if xp.delay == 0 else xp.delay * 2
+        scn = xp.scenario.replace('KeystoneBasic.', '')
+        rally_mode = "High" if xp.high else "Low"
+        fp = f'[[file:{xp.filepath}][...{xp.filepath[-11:]}]]'
+        return [xp.oss, delay, scn, rally_mode, xp.success, fp]
+    # Make org table
+    table = [ xp2orgtablerow(xp) for xp in xps ] # Body
+    table.insert(0, None)                        # Hline
+    table.insert(0, ["#Cluster", "RTT (ms)",     # Header
+                     "Keystone Scenario",
+                     "RMode", "Success", "Filepath"])
+    return table
+
+def _and(filters: List[Callable[[T], bool]]) -> Callable[[T], bool]:
+    "Test a list of filter with AND"
+    def __and(value: T) -> bool:
+        for f in filters:
+            if not f(value): return False
+            #
+        return True
+    # Curry
+    return __and
+
+def df_add_const_column(df: pd.DataFrame, cvalue: T, cname: str) -> pd.DataFrame:
+    "Adds column `cname` with value `cvalue` to `df`."
+    nb_dfrows = df.index.size
+    new_column = {cname: [cvalue for i in range(nb_dfrows)]}
+    return df.assign(**new_column)
+
+# -- Monkey patch PyFunctional with new combinator
+def truth_map_t(f: Callable[[T], Union[None, U]]):
+    """Standart `map` that fileters non `operator.truth` values.
+
+    Equivalent to `seq(x).map(f).filter(operator.truth)`
+
+    >>> seq([1, 2, 3, -1, 0, 4]).truth_map(lambda x: str(x) if x > 0 else None)
+    ['1', '2', '3', '4']
+    """
+    fname = functional.transformations.name(f)
+    return functional.transformations.Transformation(
+        f'truth_map({fname})',
+        lambda sequence: seq(sequence).map(f).filter(truth),
+        None)
+
+def on_value_t(f: Callable[[T], U]):
+    """Applies f on the second element of a (k, v).
+
+    >>> seq([("k1", 1), ("k2", 2)]).on_value(str)
+    [("k1", "1"), ("k2", "2")]
+    """
+    fname = functional.transformations.name(f)
+    return functional.transformations.Transformation(
+        f'on_key({fname})',
+        # lambda sequence: map(lambda kv: (kv[0], f(kv[1])), sequence),
+        lambda sequence: seq(sequence).map(lambda kv: (kv[0], f(kv[1]))),
+        None)
+
+def map_on_value_t(f: Callable[[List[T]], List[U]]):
+    """Maps f on the second element of a list of (k, [v]).
+
+    >>> seq([("k1", [1, 1, 1]), ("k2", [2, 2, 2])]).map_on_value(str)
+    [("k1", ["1", "1", "1"]), ("k2", ["2", "2", "2"])]
+    """
+    fname = functional.transformations.name(f)
+    return functional.transformations.Transformation(
+        f'map_on_value({fname})',
+        # lambda sequence: map(lambda kv: (kv[0], seq(kv[1]).map(f)), sequence),
+        lambda sequence: seq(sequence).map(lambda kv: (kv[0], seq(kv[1]).map(f))),
+        None)
+
+def push_t(e: T):
+    """Add the element `e` in the sequence.
+
+    >>> seq([1, 2]).push(0)
+    [0, 1, 2]
+    """
+    def push(i: Iterator[any], e: any) -> Iterator[any]:
+        l = list(i)
+        l.insert(0, e)
+        return l
+    #
+    ename = functional.transformations.name(e)
+    return functional.transformations.Transformation(
+        f'push({ename})',
+        lambda sequence: push(sequence, e),
+        None)
+
+def intersperse_(delim: T, seq: Iterator[T]) -> Iterator[T]:
+    it = iter(seq)
+    yield next(it)
+    for x in it:
+        yield delim
+        yield x
+
+def intersperse_t(delim: T):
+    ename = functional.transformations.name(delim)
+    return functional.transformations.Transformation(
+        f'intersperse({ename})',
+        lambda sequence: intersperse(delim, sequence),
+        None)
+
+functional.pipeline.Sequence.truth_map = lambda self, f: self._transform(truth_map_t(f))
+functional.pipeline.Sequence.on_value = lambda self, f: self._transform(on_value_t(f))
+functional.pipeline.Sequence.map_on_value = lambda self, f: self._transform(map_on_value_t(f))
+functional.pipeline.Sequence.push = lambda self, e: self._transform(push_t(e))
+functional.pipeline.Sequence.intersperse = lambda self, e: self._transform(intersperse_t(e))
+functional.pipeline.Sequence.__len__ = lambda self: self.len()
+functional.pipeline.Sequence.head = lambda self: self.take(1).to_list().pop()
+
+# plot config
+sns.set()
+sns.set_context(SNS_CONTEXT)
+sns.set_palette("muted")
+#+END_SRC
+
+* Introduction
+Definition of Discovery. What we try to do.
+
+Take back HotEdge'18 paper and explain the bottom/up approach
+(benefits: getting an edge IaaS manager for free by making OpenStack
+natively distributed).
+
+Tack back HotEdge'18 Central vs MultiRegion deployments
+
+- Expected size of the cluseter (10000)
+- WAN links
+- Split brain
+- Expected behaviors (read and write everywhere while maintaining ACID
+  prop).
+
+* Considered Databases
+TODO: Description of databases, how they works, how they implements
+expected behaviors of the previous section
+
+#+NAME: lst:rdbms
+#+BEGIN_SRC python :results silent :exports none
+RDBMSS = [ 'mariadb', 'galera', 'cockroachdb' ]
+#+END_SRC
+
+** MariaDB
+
+MariaDB is a fork of MySQL, intended to stay free and under GNU General Public License. It maintains a high compatibility with MySQL, keeping the same APIs and commands.
+
+** Galera in multi-master replication mode.
+
+MariaDB uses Galera Cluster as a synchronous multi-master cluster. It means that all nodes in the cluster are masters, with an active-active synchronous replication, so it is possible to read or write on every node at any time.
+
+#+CAPTION: MariaDB Galera Cluster
+#+NAME: fig:galera
+[[file:imgs/galera-2.pdf]]
+
+To say it in a more understandable way, MariaDB Galera Cluster allows to have the exact same database on every nodes thanks to a synchronous replication.
+
+
+To dive more into details, each time a transaction is requested by a client on a node, it is processed as usual until the client issues a commit. The process is stopped and all changes made to the database in the transaction are collected in a ``write-set'', along with the primary keys of the changed rows. The write-set is then broadcasted to every nodes. It then undergoes a deterministic certification test which uses the given primary keys. It actually checks all transactions between the current transaction and the last successful one to determine whether the primary keys involved conflicts between each others.
+
+If the check fails, the whole transaction is rollbacked, and if it succeeds it is applied on all nodes then committed.
+
+#+CAPTION: Certification Based Replication from [[http://galeracluster.com]]
+#+NAME: fig:galera
+[[file:imgs/commit-galera.gif]]
+
+This is pretty efficient since it only needs a broadcast to make the replication, which means. But this means that when it fails, the entire transaction must be retried and so it may lead to more conflicts and even deadlocks.
+
+
+** CockroachDB (/abbr./ CRDB).
+
+CockroachDB is a NewSQL database that uses the Raft protocol (an alternative version to Lamport's Paxos consensus protocol). Each node in the cluster holds replicas of ranges, which are sets of contiguous and sorted data from the cluster.
+
+#+CAPTION: CockroachDB ranges, replicas and leaseholders (blue points)
+#+NAME: fig:cockroachdb
+[[file:imgs/cockroachdb.png]]
+
+Each ranges have three replicas and one of them act as the leaseholder, a sort of leader that coordinates all reads and writes for the range. A read only requires the leaseholder.
+When a write is requested, the leaseholder prepares to append it to its log, forward the request to the replicas and when the quorum is achieved, commit the change by add it in the log. The quorum is an agreement from two out of the three replicas to make the change.
+
+
+#+CAPTION: CockroachDB commit
+#+NAME: fig:galera
+[[file:imgs/commit-cockroachdb.gif]]
+
+
+* Considered OpenStack Services
+Analyzing the benefit of the geo-partitioning feature of a distributed
+SQL database -- such as CRDB -- in the context of wide area network --
+such as OpenStack for the Edge -- is the incentive of this work.
+Regarding CRDB, [[https://beyondtheclouds.github.io/blog/openstack/cockroachdb/2017/12/22/a-poc-of-openstack-keystone-over-cockroachdb.html][we have developed its support]] inside OpenStack
+[[https://docs.openstack.org/keystone/latest/][Keystone]] few month ago. Hence it seems natural to focus on Keystone
+from the dozens of OpenStack services. Keystone presents another
+advantage when you want to test OpenStack at scale. To scale, current
+OpenStack deployments put instances of OpenStack in different regions
+around the globe. Commonly, operators use Galera to synchronise
+Keystones' database because they want to have all of their users and
+projects available across all regions. Hence, a client can
+authenticate herself with the same credential whatever the OpenStack
+instance. But Galera is known for scaling limitation.
+
+* Experiment Parameters
+This is the list of all parameters considered in this notebook.
+
+** OpenStack instances
+The OpenStack size (see, lst. [[lst:oss]]) defines the number of OpenStack
+instances deployed for an experiment. It varies between ~3~, ~9~ and
+~45~. A value of ~3~, means Juice deploys OpenStack on three different
+nodes, ~9~ on nine different nodes, ... The value of ~45~ comes from
+the maximum number of nodes available on the Nantes ecotype Grid5000
+cluster, but Juice is not limited to.
+
+#+CAPTION: Number of OpenStack Instances Deployed.
+#+NAME: lst:oss
+#+BEGIN_SRC python :results silent
+OSS = [ 3, 9, 45 ]
+#+END_SRC
+
+Experiments that test the impact of the cluster size, by making
+varying the number of OpenStack instances, consider LAN link between
+each OpenStack instances.
+
+** RDBMS deployment options
+The deployment of the RDBMS changes if its MariaDB, Galera or CRDB.
+
+The figure [[fig:mariadb]] depicts the deployment for MariaDB. MariaDB is
+a centralized RDBMS and thus, the Keystone backend is centralized in
+the first OpenStack instance. Other Keystones of other OpenStack
+instances refers to the backend of the first instance. This kind of
+deployment comes with two possible limitations. First, a centralized
+RDBMS is a SPoF that makes all OpenStack instances unusable if it
+crashes. Second, a network disconnection of the, /e.g./, third
+OpenStack instance with the first one makes the third unusable.
+
+#+CAPTION: Keystone Deployment with a Centralized MariaDB
+#+NAME: fig:mariadb
+[[file:imgs/mariadb.png]]
+
+Next figure (see, fig. [[fig:galera]]) depicts the deployment for Galera.
+Galera synchronizes multiple MariaDB in an active/active fashion. Thus
+Keystone's backend of every OpenStack instance is replicated between
+all nodes, which allows reads and writes on any instances. Regarding
+possible limitations, few rumors stick to Galera. First, synchronous
+may suffer from high latency networks. Second, contention during
+writes on the database may limit its scalability.
+
+#+CAPTION: Keystone Deployment with Synchronization using Galera
+#+NAME: fig:galera
+[[file:imgs/galera.png]]
+
+Last figure (see, fig. [[fig:crdb]]) depicts the deployment for CRDB. In
+this deployment, each OpenStack instance has its own Keystone. The
+backend is distributed through key-value stores on every OpenStack
+instance. Meaning, the data a Keystone is sought for is not
+necessarily in its local key-value store. CRDB is relatively new and
+we know a few about its limitations, but first, CRDB may suffer from
+high network latency even during reads if the data is located on
+another node. Second, as Galera, transaction contention may
+dramatically slow down the overall execution.
+
+#+CAPTION: Keystone Deployment with Distributed Backend using CRDB
+#+NAME: fig:crd
+[[file:imgs/crdb.png]]
+
+** Delay
+The delay (see, lst. [[lst:delays]]) defines the network latency between
+two OpenStack instances. It is expressed in terms of half the
+Round-Trip Times, (/i.e./, a value of ~50~ stands for 100 ms RTT ,
+~150~ is 300 ms RTT). The ~0~ value stands for LAN speed which is
+approximately 0.08 ms RTT on the ecotype Grid5000 cluster (10 Gbps
+card).
+
+#+CAPTION: Network Latency Between Two OpenStack Instances.
+#+NAME: lst:delays
+#+BEGIN_SRC python :results silent
+DELAYS = [ 0, 50, 150 ]
+#+END_SRC
+
+Juice applies theses network latencies with netem ~tc~. Note that
+juice applies ~tc~ rules on network interfaces that are dedicated to
+the RDBMS communications. Thus, metrics collection and other network
+traffics are not limited.
+
+Experiments that test the impact of the network latency are all done
+considering 9 OpenStack instances. They make the delay vary by
+applying traffic shaping homogeneously between the 9 OpenStack
+instances.
+
+** Locality
+An homogeneous delay is sometimes needed but does not map to the edge
+reality where some nodes are closed and other are far. To simulate
+such heterogeneous network infrastructure ...
+
+*** Delay distribution: uniform & hierarchical
+This notebook considers two kinds of OpenStack instances deployments.
+This first one, called /uniform/, defines a uniform distribution of
+the network latency between OpenStack instances. For instance, ~300~
+ms of RTT between all the ~9~ OpenStack instances. The second
+deployment, called /hierarchical/, maps to a more realistic view, like
+in cloud computing, with groups of OpenStack instances connected
+through a low latency network (/e.g./, ~3~ OpenStack instances per
+group deployed in the same country, and accessible within ~20~ ms of
+RTT). And high latency network between groups (/e.g./ ~150~ ms of RTT
+between groups deployed in different countries).
+
+* Load: Rally Scenarios
+The load is generated thanks to [[https://rally.readthedocs.io/en/latest/][Rally]]. Rally is a testing benchmarking
+tool for OpenStack. Juice uses Rally to evaluate how OpenStack control
+plane behaves at scale. This section describes Rally scenarios that
+are considered in this notebook. The description includes the ratio of
+reads and writes performed on the database. For a transactional (OLTP)
+database, depending of the reads/writes ratio, it could be better to
+choose one replication strategy to another (i.e., replicate records on
+all of your nodes or not).
+
+** A typical Rally execution
+A Rally executes its load on one instance of OpenStack. Two variables
+configure the execution of a Rally scenario: the /times/ which is the
+number of iteration execution performed for a scenario, and
+/concurrency/ which is the number of parallel iteration execution.
+Thus, a scenario with a times of ~100~ runs one hundred iterations of
+the scenario by a constant load on the OpenStack instance. A
+/concurrency of ~10~ specifies that the one hundred iterations are
+achieved by ten users in a concurrent manner. The execution output of
+such a scenario may look like this:
+#+BEGIN_EXAMPLE
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 1 START
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 2 START
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 4 START
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 3 START
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 5 START
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 6 START
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 8 START
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 7 START
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 9 START
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 10 START
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 4 END
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 11 START
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 3 END
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 12 START
+...
+Task 19b09a0b-7aec-4353-b215-8d5b23706cd7 | ITER: 100 END
+#+END_EXAMPLE
+
+#+BEGIN_note
+This behavior corresponds to the constant runner. Rally lets you
+change the runner for a serial one which is equivalent to a
+concurrency of ~1~.
+#+END_note
+
+** Low and high load
+The juice tool runs two kind of load: /low/ and /high/. The low load
+starts one Rally instance on only one OpenStack instance. The high
+load starts as many Rally instances as OpenStack instances.
+
+The high load is named as such because it generates a lot of request
+and thus, lot of contention on distributed RDBMS. The case of ~45~
+Rally instances with a concurrency of ~10~ and a times of ~100~
+charges ~450~ constant transactions on the RDBMS up until the ~4,500~
+iteration are done.
+
+** List of Rally scenarios
+Here is the complete list of rally scenarios considered in this
+notebook. Values inside the parentheses refer to the percent of reads
+versus the percent of writes on the RDBMS. More information about each
+scenario is available in appendix (see, [[*Detailed Rally scenarios][Detailed Rally scenarios]]).
+
+- keystone/authenticate-user-and-validate-token (96.46, 3.54) :: Authenticate
+     and validate a keystone token.
+- keystone/create-add-and-list-user-roles (96.22, 3.78) :: Create user
+     role, add it and list user roles for given user.
+- keystone/create-and-list-tenants (92.12, 7.88) :: Create a keystone
+     tenant with random name and list all tenants.
+- keystone/get-entities (91.9, 8.1) :: Get instance of a tenant, user, role and
+     service by id's. An ephemeral tenant, user, and role are each
+     created. By default, fetches the 'keystone' service.
+- keystone/create-user-update-password (89.79, 10.21) :: Create user
+     and update password for that user.
+- keystone/create-user-set-enabled-and-delete (91.07, 8.93) :: Create
+     a keystone user, enable or disable it, and delete it.
+- keystone/create-and-list-users (92.05, 7.95) :: Create a keystone
+     user with random name and list all users.
+
+** A note about gauging the %reads/%writes ratio
+The %reads/%writes ratio is computed on Mariadb. The gauging code
+reads values of status variables ~Com_xxx~ that provide statement
+counts over all connections (with ~xxx~ stands for ~SELECT~, ~DELETE~,
+~INSERT~, ~UPDATE~, ~REPLACE~ statements). The SQL query that does
+this job is available in listing [[lst:gauging-ratio-sql]] and returns the
+total number of reads and writes since the database started. That SQL
+query is called before and after the execution of one Rally scenario.
+After and before values are then subtracted to compute the number of
+reads and writes performed during the scenario and finally, compared
+to compute the ratio.
+
+#+CAPTION: Total number of reads and writes performed on
+#+CAPTION: MariaDB since the last reboot
+#+NAME: lst:gauging-ratio-sql
+#+BEGIN_SRC sql :eval no
+SELECT
+  SUM(IF(variable_name = 'Com_select', variable_value, 0))
+     AS `Total reads`,
+  SUM(IF(variable_name IN ('Com_delete',
+                           'Com_insert',
+                           'Com_update',
+                           'Com_replace'), variable_value, 0))
+     AS `Total writes`
+FROM  information_schema.GLOBAL_STATUS;
+#+END_SRC
+
+Note that %reads/%writes may be a little bit more in favor of reads
+than what it is presented here because the following also takes into
+account the creation/deletion of rally context. A basic Rally context
+for a Keystone scenario is ~{"admin_cleanup@openstack":
+["keystone"]}~. Not sure what does this context do exactly though,
+maybe it only creates an admin user... This context may be extended by
+other inserts specified in the scenario definition (under the
+~context~ key; see scenario definition for
+[[*keystone/create-add-and-list-user-roles][keystone/create-add-and-list-user-roles]]).
+
+The Juice implementation for this gauging is available on GitHub at
+[[https://github.com/rcherrueau/juice/blob/02af922a7c3221462d7106dfb2751b3be709a4d5/experiments/read-write-ratio.py][experiments/read-write-ratio.py]].
+
+** Python params                                                   :noexport:
+#+BEGIN_SRC python :results silent
+RALLY = OrderedDict([
+  ("KeystoneBasic.authenticate_user_and_validate_token", {
+    "operations": ["keystone_v3.fetch_token", "keystone_v3.validate_token",],
+    "iterations": 20,
+    "reads": 13339,
+    "writes": 489,
+    "%reads": 96.46,
+    "%writes": 3.54
+  }),
+  ("KeystoneBasic.create_add_and_list_user_roles", {
+    "operations": ["keystone_v3.create_role", "keystone_v3.add_role",
+                   "keystone_v3.list_roles",],
+    "iterations": 100,
+    "reads": 13303,
+    "writes": 523,
+    "%reads": 96.22,
+    "%writes": 3.78
+  }),
+  ("KeystoneBasic.create_and_list_tenants", {
+    "operations": ["keystone_v3.create_project", "keystone_v3.list_projects",],
+    "iterations": 10,
+    "reads": 1427,
+    "writes": 122,
+    "%reads": 92.12,
+    "%writes": 7.88
+  }),
+  ("KeystoneBasic.get_entities", {
+   "operations": ["keystone_v3.create_project",
+                  "keystone_v3.create_user", "keystone_v3.create_role",
+                  "keystone_v3.get_project", "keystone_v3.get_user",
+                  "keystone_v3.get_role", "keystone_v3.list_services",
+                  "keystone_v3.get_services",],
+    "iterations": 100,
+    "reads": 25427,
+    "writes": 2242,
+    "%reads": 91.9,
+    "%writes": 8.1
+  }),
+  ("KeystoneBasic.create_user_update_password", {
+    "operations": ["keystone_v3.create_user", "keystone_v3.update_user",],
+    "iterations": 100,
+    "reads": 13554,
+    "writes": 1542,
+    "%reads": 89.79,
+    "%writes": 10.21
+  }),
+  ("KeystoneBasic.create_user_set_enabled_and_delete", {
+    "operations": ["keystone_v3.create_user", "keystone_v3.update_user",
+                   "keystone_v3.delete_user",],
+    "iterations": 100,
+    "reads": 25125,
+    "writes": 2463,
+    "%reads": 91.07,
+    "%writes": 8.93
+  }),
+  ("KeystoneBasic.create_and_list_users", {
+    "operations": ["keystone_v3.create_user", "keystone_v3.list_users",],
+    "iterations": 100,
+    "reads": 12061,
+    "writes": 1042,
+    "%reads": 92.05,
+    "%writes": 7.95
+  })])
+#+END_SRC
+
+* Experiments raw results                                          :noexport:
+All test are run in light (l) and high (h) mode.
+
+#+NAME: tbl:mariadb-experiments
+|     |    3 | 9    |   45 |
+|-----+------+------+------|
+|   0 | [[file:ecotype-exp-backoff/mariadb-3-0-F][l]], [[file:ecotype-exp-backoff/mariadb-3-0-T][h]] | [[file:ecotype-exp-backoff/mariadb-9-0-F][l]], [[file:ecotype-exp-backoff/mariadb-9-0-T][h]] | [[file:ecotype-exp-backoff/mariadb-45-0-F][l]], [[file:ecotype-exp-backoff/mariadb-45-0-T][h]] |
+|  50 |      | [[file:ecotype-exp-backoff/mariadb-9-50-F][l]], [[file:ecotype-exp-backoff/mariadb-9-50-T][h]] |      |
+| 150 |      | [[file:ecotype-exp-backoff/mariadb-9-150-F][l]], [[file:ecotype-exp-backoff/mariadb-9-150-T][h]] |      |
+
+#+NAME: tbl:galera-experiments
+|     |    3 | 9    |   45 |
+|-----+------+------+------|
+|   0 | [[file:ecotype-exp-backoff/galera-3-0-F][l]], [[file:ecotype-exp-backoff/galera-3-0-T][h]] | [[file:ecotype-exp-backoff/galera-9-0-F][l]], [[file:ecotype-exp-backoff/galera-9-0-F][h]] | [[file:ecotype-exp-backoff/galera-45-0-F][l]], [[file:ecotype-exp-backoff/galera-45-0-T][h]] |
+|  50 |      | [[file:ecotype-exp-backoff/galera-9-50-F][l]], [[file:ecotype-exp-backoff/galera-9-50-T][h]] |      |
+| 150 |      | [[file:ecotype-exp-backoff/galera-9-150-F][l]], [[file:ecotype-exp-backoff/galera-9-150-T][h]] |      |
+
+#+NAME: tbl:cockroachdb-experiments
+|     |    3 | 9    |   45 |
+|-----+------+------+------|
+|   0 | [[file:ecotype-exp-backoff/cockroachdb-3-0-F][l]], [[file:ecotype-exp-backoff/cockroachdb-3-0-T][h]] | [[file:ecotype-exp-backoff/cockroachdb-9-0-F][l]], [[file:ecotype-exp-backoff/cockroachdb-9-0-T][h]] | [[file:ecotype-exp-backoff/cockroachdb-45-0-F][l]], [[file:ecotype-exp-backoff/cockroachdb-45-0-T][h]] |
+|  50 |      | [[file:ecotype-exp-backoff/cockroachdb-9-50-F][l]], [[file:ecotype-exp-backoff/cockroachdb-9-50-T/env][h]] |      |
+| 150 |      | [[file:ecotype-exp-backoff/cockroachdb-9-150-F][l]], [[file:ecotype-exp-backoff/cockroachdb-9-150-T][h]] |      |
+
+* Extract, Reify, Query Experiments and their Rally Results
+The execution of a Rally scenario (such as those seen in the previous
+section -- see [[*Load: Rally Scenarios][Load: Rally Scenarios]]) produces a json file. The json
+file contains a list of entries (path ~workloads.data~): one for each
+iteration of the scenario. An entry then retains the time (in second)
+it takes to complete all Keystone operations involved in the Rally
+scenario.
+
+This section provides python facilities to extract and query Rally
+results for latter analyses. Someone interested by the results and not
+by the process to compute them may skip this section jump to the next
+one (see, [[*Cluster Size Impact][Cluster Size Impact]]).
+
+#+BEGIN_COMMENT
+This notebook evaluate different database backends in the context of
+an OpenStack for the edge on the basis of Rally benchmarking tool.
+
+: for i in $(ls -d */); do pushd $i; ls backup/*/rally*.tar.gz | xargs -I '{}' tar -xf '{}'; popd; done
+: for i in $(ls -d */); do cd $i; echo $i; ls -l rally_home/*.json|wc -l; cd ..; done  # 7/21/7/315/7/63/7/63/7/63
+#+END_COMMENT
+
+An archive with results of all experiments of this notebook is
+available at TODO:url. Let's assume the ~XPS_PATH~ variable references
+the path where this archive is extracted. In this archive, there is
+results for experimentation on two databases engines: CRDB and Galera.
+Results are in several json files, so listing [[lst:xp-paths]] define
+accessors for all of them thanks to the [[https://docs.python.org/3/library/glob.html][~glob~]] python module. The
+~glob~ module finds all paths that match a specified UNIX patterns.
+
+#+CAPTION: Paths to Rally Json Results File.
+#+NAME: lst:xp-paths
+#+BEGIN_SRC python :results silent
+XP_PATHS = './ecotype-exp-backoff/'
+MARIADB_XP_PATHS = glob.glob(XP_PATHS + 'mariadb-*/rally_home/*.json')
+GALERA_XP_PATHS = glob.glob(XP_PATHS + 'galera-*/rally_home/*.json')
+CRDB_XP_PATHS = glob.glob(XP_PATHS + 'cockroachdb-*/rally_home/*.json')
+#+END_SRC
+
+** From Json files to Python Objects
+A data class ~XP~ retains data of one experiment (i.e., name of the
+rally scenario, name of database technology, ... -- see l.
+[[(xp-dataclass-start)]] to [[(xp-dataclass-end)]] of listing [[lst:xp-dataclass]]
+for the complete list). Reifing experiment data in a Python object
+will help for the latter analyses. Whit a Python object, it is easier
+to filer, sort, map, ... experiments.
+
+#+CAPTION: Experiment Data Class.
+#+NAME: lst:xp-dataclass
+#+BEGIN_SRC python -r :results silent
+@dataclass(frozen=True)
+class XP:
+    scenario: str     # Rally scenario name (ref:xp-dataclass-start)
+    rdbms: str        # Name of the RDBMS (e,g, cockcroachdb, galera)
+    filepath: str     # Filepath of the json file
+    oss: int          # Number of OpenStack instances
+    delay: int        # Delay between nodes
+    success: str      # Success rate (e.g., "100%")
+    high: bool        # Experiment performed during a high
+    dataframe: pd.DataFrame  # Results in a pandas 2d DataFrame (ref:xp-dataclass-end)
+#+END_SRC
+
+The ~XP~ data class comes with the ~make_xp~ function (see, lst.
+[[lst:make_xp]]). It produces an ~XP~ object from an experiment file path
+(i.e., Rally json file). Especially, it uses the python [[http://objectpath.org/][~objectpath~]]
+module that provides a DSL to query Json documents (à la XPath) and
+extract only interested data.
+
+#+CAPTION: Builds an ~XP~ object from a Rally Json Result File.
+#+NAME: lst:make_xp
+#+BEGIN_SRC python -r :results silent :noweb no-export
+def make_xp(rally_path: str) -> XP:
+    # Find XP name in the `rally_path`
+    RE_XP = r'(?:mariadb|galera|cockroachdb)-[a-zA-Z0-9\-]+'
+    # Find XP params in the `rally_path` (e.g., cluster size, delay, ...)
+    RE_XP_PARAMS = r'(?P<db>[a-z]+)-(?P<oss>[0-9]+)-(?P<delay>[0-9]+)-(?P<high>[TF]).*'
+    # Json path to the rally scenario's name
+    JPATH_SCN = '$.tasks[0].subtasks[0].title'
+    #
+    <<lst:dataframe_per_operations>> (ref:dataframe_per_operations)
+    #
+    with open(rally_path) as rally_json:
+        rally_values = objectpath.Tree(json.load(rally_json))
+        xp_info = re.match(RE_XP_PARAMS, re.findall(RE_XP, rally_path)[0]).groupdict()
+        success = success_rate(rally_values)
+        return XP(
+            scenario = rally_values.execute(JPATH_SCN),
+            filepath = rally_path,
+            rdbms = xp_info.get('db'),
+            oss = int(xp_info.get('oss')),
+            delay = int(xp_info.get('delay')),
+            success = success,
+            high = True if xp_info.get('high') is 'T' else False,
+            dataframe = dataframe_per_operations(rally_values)) if success else None
+#+END_SRC
+
+The [[(dataframe_per_operations)][~<<lst:dataframe_per_operations>>~]] is a placeholder for the
+function that transforms Rally Json results in a pandas [[https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.html#pandas.DataFrame][~DataFrame~]]
+for result analyses. The next section will say more on this. Right
+now, focus on ~make_xp~. With ~make_xp~, transforming all Rally Jsons
+into ~XP~ objects is as simple as mapping over all experiment paths
+(see lst. [[lst:xps]]).
+
+#+CAPTION: From Json Files to Python Objects.
+#+NAME: lst:xps
+#+BEGIN_SRC python :results silent
+XPS = seq(MARIADB_XP_PATHS + GALERA_XP_PATHS + CRDB_XP_PATHS).truth_map(make_xp)
+#+END_SRC
+
+This notebook also comes with a bunch of predicate in its toolbelt
+that ease the filtering and sorting of experiments. For instance a
+function src_python[:exports code :eval no]{def is_crdb(xp: XP) ->
+bool} only keeps CRDB experiments. And src_python[:exports code :eval
+no]{def xp_csize_rtt_b_scn_order(xp: XP) -> str} returns a comparable
+value to sort experiments. The complete list is available in the
+source of this notebook.
+
+#+BEGIN_SRC python :results silent :noweb no-export :exports none
+<<lst:predicate>>
+<<lst:hlq>>
+<<lst:hlp>>
+
+# Normalize experiments (ie, make NaN dataframe for resutls that crashed)
+RESULTS = XPS.group_by(lambda xp: (xp.rdbms, xp.scenario, xp.oss, xp.high, xp.delay)).to_dict()
+normalized_xps = []
+for (rdbms, scn, high, (oss, delay)) in [ (r, s, h, c)
+                                          for r in RDBMSS
+                                          for s in RALLY.keys()
+                                          for h in [False, True]
+                                          # We have resutls for these combinations of OS Instances/Delay:
+                                          for c in [(3, 0), (9, 0), (45, 0), (9, 50), (9, 150)] ]:
+    # Get the list of XP
+    xps = RESULTS.get((rdbms, scn, oss, high, delay), [])
+    if not high and len(xps) == 0:
+        normalized_xps += make_xps(scn, rdbms, oss, delay, high, 1)
+    #
+    elif high and len(xps) < oss:
+        normalized_xps += xps + make_xps(scn, rdbms, oss, delay, high, oss - len(xps))
+    #
+    else:
+        normalized_xps += xps
+
+# Memoization
+XPS = seq(normalized_xps).order_by(xp_csize_rtt_b_scn_order).cache()
+#+END_SRC
+
+*** MariaDB experiments
+Listing [[lst:mariadb_xps]] shows how to compute the list of experiments
+for CockroachDB (~filter(is_crdb)~). Table [[tab:crdb_xps]] presents the
+results.
+
+#+CAPTION: Access to MariaDB Experiments.
+#+NAME: lst:mariadb_xps
+#+BEGIN_SRC python :results silent
+MARIADB_XPS = XPS.filter(is_mariadb)
+#+END_SRC
+
+#+BEGIN_COMMENT
+The ~xp2orgtable~ is a [[*Prelude][Prelude]] function that takes a list of ~XP~ and
+formats them into an Org table as table [[tab:crdb_xps]].
+#+END_COMMENT
+
+#+HEADER: :colnames yes :hlines yes
+#+NAME: lst:mariadb_xps_org
+#+BEGIN_SRC python :results table :exports results :eval no
+xp2orgtable(MARIADB_XPS)
+#+END_SRC
+
+*** Galera experiments
+Listing [[lst:galera_xps]] shows how to compute the list of experiments
+for Galera (~filter(is_galera)~). Table [[tab:galera_xps]] presents the
+list of experiments.
+
+#+CAPTION: Access to Galera Experiments.
+#+NAME: lst:galera_xps
+#+BEGIN_SRC python :results silent
+GALERA_XPS = XPS.filter(is_galera).order_by(xp_csize_rtt_b_scn_order)
+#+END_SRC
+
+#+HEADER: :colnames yes :hlines yes
+#+NAME: lst:galera_xps_org
+#+BEGIN_SRC python :results table :exports results :eval no
+xp2orgtable(GALERA_XPS)
+#+END_SRC
+
+*** CockroachDB experiments
+Listing [[lst:crdb_xps]] shows how to compute the list of experiments for
+CockroachDB (~filter(is_crdb)~). Table [[tab:crdb_xps]] presents the
+results.
+
+#+CAPTION: Access to CockroachDB Experiments.
+#+NAME: lst:crdb_xps
+#+BEGIN_SRC python :results silent
+CRDB_XPS = XPS.filter(is_crdb).order_by(xp_csize_rtt_b_scn_order)
+#+END_SRC
+
+#+BEGIN_COMMENT
+The ~xp2orgtable~ is a [[*Prelude][Prelude]] function that takes a list of ~XP~ and
+formats them into an Org table as table [[tab:crdb_xps]].
+#+END_COMMENT
+
+#+HEADER: :colnames yes :hlines yes
+#+NAME: lst:crdb_xps_org
+#+BEGIN_SRC python :results table :exports results :eval no
+xp2orgtable(CRDB_XPS)
+#+END_SRC
+
+** Query Rally Results
+The Rally Json file contains values that give the scenario completion
+time per keystone operations at a certain Rally run. These values must
+be analyzed to evaluate which backend best suits for an OpenStack for
+the edge. And a good python module to data analysis is [[https://pandas.pydata.org/][Pandas]]. Thus,
+the function ~dataframe_per_operations~ (see lst.
+[[lst:dataframe_per_operations]] -- part of [[lst:make_xp][~make_xp~]]) takes the Rally
+json and returns a Pandas [[https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.html#pandas.DataFrame][~DataFrame~]].
+
+#+CAPTION: Transform Rally Results into Pandas DataFrame.
+#+NAME: lst:dataframe_per_operations
+#+BEGIN_SRC python :results silent
+# Json path to the completion time series
+JPATH_SERIES = '$.tasks[0].subtasks[0].workloads[0].data[len(@.error) is 0].atomic_actions'
+def dataframe_per_operations(rally_values: objectpath.Tree) -> pd.DataFrame:
+    "Makes a 2d pd.DataFrame of completion time per keystone operations."
+    df = pd.DataFrame.from_items(
+        items=(seq(rally_values.execute(JPATH_SERIES))
+                 .flatten()
+                 .group_by(itemgetter('name'))
+                 .map_on_value(lambda it: it['finished_at'] - it['started_at'])))
+    return df
+#+END_SRC
+
+The DataFrame is a table that lists all the completion times in second
+for a certain Rally scenario. A column references a Keystone
+operations and row labels (index) references the Rally run. Next
+snippet (see, lst. [[lst:crdb_cltenants]]) is an example of the DataFrame
+for the [[*keystone/create-and-list-tenants]["Creat and List Tenants"]] Rally scenario with ~9~ nodes in the
+CRDB cluster and a ~LAN~ delay between each node. The ~lambda~ takes
+the DataFrame and transforms it to add a "Total" column. Table
+[[tab:crdb_cltenants]] presents the output of this DataFrame.
+
+
+#+CAPTION: Access to the DataFrame of Rally ~create_and_list_tenants~.
+#+NAME: lst:crdb_cltenants
+#+BEGIN_SRC python :results silent
+CRDB_CLTENANTS = (XPS
+    .filter(is_keystone_scn('create_and_list_tenants'))
+    .filter(when_oss(9))
+    .filter(is_crdb)
+    .filter(compose(not_, is_high))
+    .filter(when_delay(0))
+    .map(attrgetter('dataframe'))                    # Get DataFrame
+    .map(lambda df: df.assign(Total=df.sum(axis=1))) # Add a Total Column
+    .head())
+#+END_SRC
+
+#+HEADER: :rownames yes :colnames yes :hlines yes
+#+NAME: lst:crdb_cltenants_org
+#+BEGIN_SRC python :results table :exports results
+df2orgtable(CRDB_CLTENANTS)
+#+END_SRC
+
+#+CAPTION: Entries for Rally ~create_and_list_tenants~,
+#+CAPTION: 9 CRDB nodes, LAN delay.
+#+NAME: tab:crdb_cltenants
+#+RESULTS: lst:crdb_cltenants_org
+|   | keystone_v3.create_project | keystone_v3.list_projects | Total |
+|---+----------------------------+---------------------------+-------|
+| 0 |                      0.134 |                     0.023 | 0.157 |
+| 1 |                      0.127 |                     0.025 | 0.152 |
+| 2 |                      0.129 |                     0.024 | 0.153 |
+| 3 |                      0.134 |                     0.023 | 0.157 |
+| 4 |                      0.132 |                     0.024 | 0.156 |
+| 5 |                      0.132 |                     0.025 | 0.157 |
+| 6 |                      0.126 |                     0.024 | 0.150 |
+| 7 |                      0.126 |                     0.026 | 0.153 |
+| 8 |                      0.131 |                     0.025 | 0.156 |
+| 9 |                      0.130 |                     0.025 | 0.155 |
+
+A pandas DataFrame presents the benefits of easily applying a wide
+range of analyses. As an example, the following snippet (see, lst.
+[[lst:crdb_cltenants_describe]]) computes the number of Rally runs (i.e.,
+*count*), mean and standard deviation (i.e., *mean*, *std*), the
+fastest and longest completion time (i.e., *min*, *max*), and the
+25th, 50th and 75th percentiles (i.e., *25%*, *50%*, *75%*). The
+~transpose~ method transposes row labels (index) and columns. Table
+[[tab:crdb_cltenants_describe]] presents the output of the analysis.
+
+#+CAPTION: Analyse the DataFrame of Rally ~create_and_list_tenants~.
+#+NAME:lst:crdb_cltenants_describe
+#+BEGIN_SRC python :results silent
+CRDB_CLTENANTS_ANALYSIS = CRDB_CLTENANTS.describe().transpose()
+#+END_SRC
+
+#+HEADER: :rownames yes :colnames yes :hlines yes
+#+NAME:lst:crdb_cltenants_describe_org
+#+BEGIN_SRC python :results table :exports results
+df2orgtable(CRDB_CLTENANTS_ANALYSIS)
+#+END_SRC
+
+#+CAPTION: Analyses of Rally ~create_and_list_tenants~,
+#+CAPTION: 9 CRDB nodes, LAN delay.
+#+NAME:tab:crdb_cltenants_describe
+#+RESULTS: lst:crdb_cltenants_describe_org
+|                            |  count |  mean |   std |   min |   25% |   50% |   75% |   max |
+|----------------------------+--------+-------+-------+-------+-------+-------+-------+-------|
+| keystone_v3.create_project | 10.000 | 0.130 | 0.003 | 0.126 | 0.128 | 0.131 | 0.132 | 0.134 |
+| keystone_v3.list_projects  | 10.000 | 0.024 | 0.001 | 0.023 | 0.024 | 0.024 | 0.025 | 0.026 |
+| Total                      | 10.000 | 0.155 | 0.003 | 0.150 | 0.153 | 0.155 | 0.157 | 0.157 |
+
+* Heavy Lifting                                                    :noexport:
+Functions that do the heavy lifting for the rest of this notebook.
+
+** Predicates
+#+NAME: lst:predicate
+#+BEGIN_SRC python :results silent
+def is_crdb(xp: XP) -> bool:
+    "Filter for CRDB experiment."
+    return xp.rdbms == 'cockroachdb'
+
+def is_galera(xp: XP) -> bool:
+    "Filter for Galera experiment."
+    return xp.rdbms == 'galera'
+
+def is_mariadb(xp: XP) -> bool:
+    "Filter for MariaDB experiment."
+    return xp.rdbms == 'mariadb'
+
+def is_high(xp: XP) -> bool:
+    "Filter for highed experiment."
+    return xp.high
+
+def is_keystone_scn(scn: str) -> bool:
+    "Filter for keystone scenario `scn`."
+    return lambda xp: xp.scenario == 'KeystoneBasic.' + scn
+
+def when_delay(lat: int) -> Callable[[XP], bool]:
+    "Filter for latence `lat`."
+    return lambda xp: xp.delay == lat
+
+def when_oss(csize: int) -> Callable[[XP], bool]:
+    "Filter for cluster size `csize`."
+    return lambda xp: xp.oss == csize
+
+def with_success_rate(rate: float) -> Callable[[XP], bool]:
+    "Filter for cluster size `csize`."
+    return lambda xp: xp.success >= rate
+
+def xp_csize_rtt_b_scn_order(xp: XP) -> str:
+    """
+    Returns a comparable value to sort experiments.
+
+    The sort is made on
+    1. The database type (CRDB or Galera)
+    2. Size of the cluster
+    3. Delay
+    4. No High, High
+    5. Rally scenario's name
+    """
+    # Format String Syntax
+    # https://docs.python.org/2/library/string.html#format-examples
+    return f'{xp.rdbms}-{xp.oss:0>3}-{xp.delay:0>3}-{xp.high}-{xp.scenario}'
+
+#+END_SRC
+
+** High level Queries
+#+NAME: lst:hlq
+#+BEGIN_SRC python :results silent
+def add_total_column(df: pd.DataFrame) -> pd.DataFrame:
+    "Adds the Total column that sum values of all columns"
+    return df.assign(Total=df.sum(axis='columns'))
+
+def filter_percentile(q: float) -> Callable[[pd.DataFrame], pd.DataFrame]:
+    "Removes values upper than percentile `q` of a Rally based DataFrame"
+    #
+    def find_column_with_biggest_impact(df: pd.DataFrame) -> str:
+        "Returns the column's name with values that most impacts the plot crushing"
+        return df.std().idxmax()
+    # Curry
+    def _filter(df: pd.DataFrame) -> pd.DataFrame:
+        df_with_total = add_total_column(df)
+        percentile = df_with_total.quantile(q)['Total']
+        new_df = df_with_total[df_with_total['Total'] < percentile]
+        return new_df.drop('Total', axis='columns')
+    #
+    return _filter
+
+def set_xp_df(xp: XP, new_df: pd.DataFrame) -> XP:
+    "Sets dataframe `new_df` of XP `xp`"
+    return XP(scenario=xp.scenario,
+              filepath=xp.filepath,
+              rdbms=xp.rdbms,
+              oss=xp.oss,
+              delay=xp.delay,
+              success=xp.success,
+              high=xp.high,
+              dataframe=new_df)
+
+def reify_in_xpdf(attr: str) -> Callable[[XP], XP]:
+    "Pushes `XP.attr` attribute value into `XP.dataframe` under `attr` column"
+    # Curry
+    def _push(xp: XP) -> XP:
+        column_value = attrgetter(attr)(xp)
+        column_name  = attr
+        df_with_new_col = df_add_const_column(xp.dataframe, column_value, column_name)
+        return set_xp_df(xp, df_with_new_col)
+    #
+    return _push
+
+def results_per_scn_attr(attr: str, xps: List[XP]) -> List[
+        Tuple[str, pd.DataFrame, pd.DataFrame]]:
+    return (xps
+            # Index XPs by scenario: [(scenario, [xps-csize{3/25/45}-lat0])]
+            .group_by(attrgetter('scenario'))
+            # Push values of `xp.attr` and `xp.rdbms` in the
+            # dataframe. And only keep values under the 90th
+            # percentile.
+            .map_on_value(reify_in_xpdf(attr))
+            .map_on_value(reify_in_xpdf('rdbms'))
+            .map_on_value(attrgetter('dataframe'))
+            .map_on_value(filter_percentile(.95))
+            # Get one big DataFrame per scenario:
+            # [(scenario, df{keystone.op1, keystone.op2, ..., oss, rdbms})]
+            .on_value(lambda dfs: pd.concat(dfs.to_list()))
+            # Groupe by `xp.rdbms` and `xp.attr`, to compute the mean
+            # and std of each group:
+            .on_value(lambda df: df.groupby(['rdbms', attr]))
+            # Returns this as a triplet: (scn, df_mean, df_std)
+            .map(lambda scn_gdf: (
+                scn_gdf[0],
+                scn_gdf[1].aggregate('mean'),
+                scn_gdf[1].apply(lambda df: df.sum(axis=1).std())))
+          )
+
+def scn_mean_std(obj: Tuple['scenario', pd.DataFrame]) -> Tuple[
+        'scenario', pd.DataFrame, pd.DataFrame]:
+    scn, gdf = obj
+    return (scn, gdf.aggregate('mean'), gdf.apply(lambda df: df.sum(axis=1).std()))
+#+END_SRC
+
+** Ploting results
+#+NAME: lst:ploting
+#+BEGIN_SRC python :results silent
+def series_stackedbar_plot(scn: 'xp.scenario',
+                           ops_std: Dict['xp.attr', Union[Tuple['pd.Series_with_success', float], None]],
+                           ax: matplotlib.axes.Axes):
+    """Vertical bar plot of a dict of pd.Series.
+
+    Vertiacal bar plot pushses all series of one dict key in one bar
+    (e.g., one bar for a cluster size of 3, one bar for a cluster size
+    of 9, and one bar for a cluster size of 45) . The bar is divided
+    in mutiple parts that depict the value of each operation (e.g.,
+    keystone.create_user and keystone.update_user).
+    """
+    # Bars in the plot are keys in the Dict (eg, 3, 25, 45 or 0, 50,
+    # 150).
+    bars = list(ops_std.keys())
+    nb_bar = len(bars)
+    # Size of a bar is 100% of the x view divided by the number of bar.
+    bar_width = 1.0/nb_bar
+    bar_index = [ i * bar_width for i in range(nb_bar) ]
+    # Put on tick per bar on x axis
+    ax.set_xticks(bar_index)
+    # Operations (index) in the Series, e.g.,
+    # keystone_v3.create_project, keystone_v3.create_user, ...
+    operations = RALLY[scn]['operations']
+    #
+    normalized_ops_std = {}
+    for attr, v in ops_std.items():
+        if v:
+            operation_series = normalize_series(scn, v[0])
+            success = v[0].loc['success']
+            std = v[1]
+        else:
+            operation_series = make_series(scn)
+            success = 0
+            std = 0
+        #
+        normalized_ops_std.setdefault(attr, (operation_series, success, std))
+    #
+    # Make a datafram with results, e.g.,
+    #                                   3         9         45
+    # keystone_v3.create_project  0.137284  0.145858  0.154108
+    # keystone_v3.create_user     0.176240  0.183208  0.196593
+    # keystone_v3.create_role     0.031082  0.031126  0.034259
+    # keystone_v3.get_project     0.020774  0.020956  0.022913
+    # keystone_v3.get_user        0.020317  0.020496  0.022833
+    # keystone_v3.get_role        0.020130  0.020629  0.022903
+    # keystone_v3.list_services   0.023072  0.023743  0.026078
+    # keystone_v3.get_services    0.020144  0.020214  0.022274
+    df  = pd.DataFrame.from_dict({ k: s for k, (s, succ, std) in normalized_ops_std.items() })
+    successes = [ succ for k, (s, succ, std) in normalized_ops_std.items() ]
+    stds = [ std for k, (s, succ, std) in normalized_ops_std.items() ]
+    # Plots rows one after the other (stacked). The plot is
+    # made by calling `ax.bar` with all values of the first row,
+    # then, all values of the second row, and so on, until the last
+    # row.
+    for irow, row in enumerate(operations):
+        # Stack values on top of the previous row
+        previous_row = None if irow == 0 else df.loc[:df.index[irow - 1]].sum(axis='index')
+        # Print total standard deviation on the last element of the stack
+        # yerr = None if row != operations[-1] else std
+        yerr = None
+        # Plot
+        rects = ax.bar(bar_index, df.loc[row].values, bar_width,
+                       bottom=previous_row, yerr=yerr, label=row)
+    #
+    # Add success rate on top of the last row
+    for irect, rect in enumerate(rects):
+        x = rect.get_x() + rect.get_width()*0.5
+        y = rect.get_y() + rect.get_height()*1.01
+        fail = round(1.0 - successes[irect], 2) if not np.isnan(successes[irect]) else 'NaN'
+        std = round(stds[irect], 2)
+        ax.text(x, y, f'σ: {std}, λ: {fail}',
+                ha='center',
+                va='bottom',
+                size='x-small')
+    #
+    ax.set_xticklabels(bars)
+
+def series_linear_plot(scn: 'xp.scenario',
+                       cfs: Dict['xp.attr', Union[pd.Series, None]],
+                       ax: matplotlib.axes.Axes):
+    # Plots lines one after the other. made by calling `ax.bar` with
+    # all values of the experiment, then, all values of the second,
+    # and so on, until the last row.
+    for attr, cf in cfs.items():
+        normalized_cf = cf if cf is not None else pd.Series(np.nan, index=range(10))
+        ax.plot(normalized_cf, drawstyle='steps', label=attr)
+
+def series_lreg_plot(scn: 'xp.scenario',
+                     ss: Dict['xp.attr', Union[pd.Series, None]],
+                     ax: matplotlib.axes.Axes):
+    normalized_ss = {}
+    x = []
+    y = []
+    for attr, s in ss.items():
+        normalized_s = s if s is not None else pd.Series(np.nan, index=range(10))
+        for i in range(len(normalized_s)):
+            x.append(attr)
+        for e in normalized_s.values:
+            y.append(e)
+    #
+    ax.scatter(x, y, marker='+')
+    #
+    z = np.polyfit(x, y, 1)
+    p = np.poly1d(z)
+    ax.plot(x,p(x))
+#+END_SRC
+
+* Cluster Size Impact
+This test evaluates how the completion time of Rally Keystone's
+scenarios varies, depending on the RDBMS and the number of OpenStack
+instances. It measure the capacity of a RDBMS to handle lot of
+connections and requests. In this test, the number of OpenStack
+instances varies between ~3~, ~9~ and ~45~ and a ~LAN~ link
+inter-connects instances. As explain in TODO:org-head, the deployment
+of the database depends on the RDBMS. With MariaDB, one instance of
+OpenStack contains the database, and others connect to that one. For
+Galera and CRDB, every OpenStack contains an instance of the RDBMS.
+
+For this experiment, Juice deployed database together with OpenStack
+instances and plays Rally scenarios listed in section TODO:org-rally.
+Juice runs Rally scenarios in both single and high mode. Results
+are presented in two next sections. The Juice implementation for this
+gauging is available on GitHub at [[https://github.com/rcherrueau/juice/blob/02af922a7c3221462d7106dfb2751b3be709a4d5/experiments/read-write-ratio.py][experiments/read-write-ratio.py]].
+
+** Plot                                                            :noexport:
+#+BEGIN_SRC python :results silent
+def csize_plot(ytitle: str,
+               plot: Callable[['xp.scenario',
+                               Dict['xp.oss', T],
+                               matplotlib.axes.Axes], None],
+               filepath: str,
+               xps: Dict[Tuple['xp.scenario', 'xp.rdbms', 'xp.oss'], T],
+               legend: Union['bottom-out', 'all'] = 'bottom-out'):
+    subfig_width  = 4 # inch
+    subfig_height = 4 # inch
+    nscns  = len(RALLY.keys()) # Number of scenarios
+    nrdbms = len(RDBMSS)       # Number of rdbms
+    fig, axs = plt.subplots(nrows=nrdbms,
+                            ncols=nscns,
+                            figsize=(subfig_width  * nscns,
+                                     subfig_height * nrdbms),
+                            tight_layout=True,
+                            sharex='col',
+                            sharey='col')
+    # Subplots for sncs x rdmbss
+    scns_rdbmss = [ (s, r) for s in enumerate(RALLY.keys()) for r in enumerate(RDBMSS) ]
+    for (iscn, scn), (irdbms, rdbms) in scns_rdbmss:
+        # Get subplot for `scn` and `rdbms`
+        ax = axs[irdbms][iscn]
+        # Get all experiments for `scn` and `rdbms`, indexed by the
+        # number of OpenStack instances
+        oss_xps = { csize : xps.get((scn, rdbms, csize), None) for csize in OSS}
+        # Plot
+        plot(scn, oss_xps, ax)
+        # Only print y label for the first column
+        # if iscn == 0:
+        #     ax.set_ylabel(ytitle % rdbms.title())
+        #
+        # Only print scenario name for the first row
+        if irdbms == 0 :
+            fig_title = textwrap.shorten((scn.replace('KeystoneBasic.', '')
+                                             .replace('_', ' ')
+                                             .title()),
+                                         width=30,
+                                         placeholder='...')
+            ax.set_title(fig_title, loc='left')
+        #
+        # Remove x label except for the last row
+        # if irdbms != len(RDBMSS) - 1:
+        #     plt.setp(ax.get_xticklabels(), visible=False)
+        #
+        # Legend at the bottom of the view on the last row
+        if legend == 'bottom-out' and irdbms == len(RDBMSS) - 1:
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0 + box.height * 0.1,
+                             box.width, box.height * 0.9])
+            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1))
+        #
+        # Legend on all plot
+        if legend == 'all':
+            ax.legend()
+    #
+    #
+    fig.align_labels()
+    return savefig(fig, filepath)
+#+END_SRC
+
+** Single
+The following python snippet filters experiments to only keep those
+when delay is ~0~ in a single Rally mode. Groups results by scenario's
+name, RDBMS technology and number of OpenStack instances. Then,
+filters results above the 95th quantile. In the plot, the /λ/ Greek
+letter stands for the failure rate and /σ/ for the standard deviation.
+
+#+BEGIN_SRC python :results silent
+XPS_CSIZE_SINGLE = (XPS
+    .filter(when_delay(0))
+    .filter(compose(not_, is_high))
+    # Index XPs by scenario: [((scenario, rdbms, csize), [xps-csize{3/9/45}-lat0])]
+    .group_by(lambda xp: (xp.scenario, xp.rdbms, xp.oss))
+    # Only keep values under the 95th percentile.
+    .map_on_value(reify_in_xpdf('success'))
+    .map_on_value(attrgetter('dataframe'))
+    .map_on_value(filter_percentile(.9))
+    # Get one big DataFrame -- concat all high
+    # results:
+    # [((scenario, rdbms, csize), df{keystone.op1, keystone.op2, ...})]
+    .on_value(lambda dfs: pd.concat(dfs.to_list())))
+#+END_SRC
+
+Figure [[fig:xps_csize_single]] presents the mean completion time (in
+second) of Keystone scenarios in a single Rally mode. In the figure,
+columns presents results of a specific scenario: the first column
+presents results for Authenticate User and Validate Token, the second
+for Create Add and List User Role. Lines present results with a
+specific RDMS: first line presents results for MariaDB, second for
+Galera and third for CRDB. The figure presents results with stacked
+bar charts. A bar presents the result for a specific number of
+OpenStack instances (/i.e./, ~3~, ~9~ and ~45~) and stacks completion
+times of each Keystone operations.
+
+#+NAME: lst:xps_csize_single
+#+BEGIN_SRC python :results file :exports results
+csize_plot("%s Completion Time (s)",
+           series_stackedbar_plot,
+           'imgs/cluster-size-impact-single',
+           # Compute the mean and the std of the results
+           (XPS_CSIZE_SINGLE
+            .on_value(lambda df: (df.median(), df.sum(axis=1).std()))
+            .to_dict()))
+#+END_SRC
+
+#+CAPTION: Impact of the Cluster Size on the Completion Time (one Rally).
+#+NAME: fig:xps_csize_single
+#+ATTR_ORG: :width 100
+#+RESULTS: lst:xps_csize_single
+[[file:imgs/cluster-size-impact-single.svg]]
+
+*** COMMENT Linear Regression
+# #+NAME: lst:xps_csize_single_lreg
+# #+BEGIN_SRC python :results file :exports results
+# csize_plot("%s",
+#            series_lreg_plot,
+#            'imgs/csize-impact-single-lreg',
+#            (XPS_CSIZE_SINGLE
+#             .on_value(lambda df: df.drop('success', axis='columns'))
+#             .on_value(lambda df: df.sum(axis='columns'))
+#             .on_value(debug)
+#             .to_dict()),
+#            legend='all')
+# #+END_SRC
+
+# #+CAPTION: Impact of the Delay on the
+# #+CAPTION: Completion Time (Linear Regression).
+# #+NAME: fig:xps_csize_single_lreg
+# #+ATTR_ORG: :width 100
+# #+RESULTS: lst:xps_csize_single_lreg
+[[file:imgs/csize-impact-single-lreg.svg]]
+
+*** Cumulative Frequency Distribution
+#+NAME: lst:xps_csize_single_cdf
+#+BEGIN_SRC python :results file :exports results
+csize_plot("%s",
+           series_linear_plot,
+           'imgs/cluster-size-impact-single-cdf',
+           # Sum operations of each iteration, and then compute de
+           # cumulative frequency
+           (XPS_CSIZE_SINGLE
+            .on_value(lambda df: df.drop('success', axis='columns'))
+            .on_value(lambda df: df.sum(axis='columns'))
+            .on_value(make_cumulative_frequency)
+            .to_dict()),
+           legend='all')
+#+END_SRC
+
+#+CAPTION: Impact of the Cluster Size on the
+#+CAPTION: Completion Time (Cumulative Frequency).
+#+ATTR_ORG: :width 100
+#+RESULTS: lst:xps_csize_single_cdf
+[[file:imgs/cluster-size-impact-single-cdf.svg]]
+
+** High
+Same as previous, but in a high mode.
+#+NAME: lst:xps_csize_high
+#+BEGIN_SRC python :results silent
+XPS_CSIZE_HIGH = (XPS
+                   .filter(when_delay(0))
+                   .filter(is_high)
+                   .group_by(lambda xp: (xp.scenario, xp.rdbms, xp.oss))
+                   .map_on_value(reify_in_xpdf('success'))
+                   .map_on_value(attrgetter('dataframe'))
+                   .map_on_value(filter_percentile(.9))
+                   .on_value(lambda dfs: pd.concat(dfs.to_list())))
+#+END_SRC
+
+*** Mean of Keystone Operations
+#+NAME: lst:xps_csize_high
+#+BEGIN_SRC python :results file :exports results
+csize_plot("%s Completion Time (s)",
+           series_stackedbar_plot,
+           'imgs/cluster-size-impact-high',
+           # Compute the mean and the std of the results
+           (XPS_CSIZE_HIGH
+            .on_value(lambda df: (df.mean(), df.sum(axis=1).std()))
+            .to_dict()))
+#+END_SRC
+
+#+CAPTION: Impact of the Cluster Size on the Completion Time (high).
+#+ATTR_ORG: :width 100
+#+RESULTS: lst:xps_csize_high
+[[file:imgs/cluster-size-impact-high.svg]]
+
+*** COMMENT Linear Regression
+# #+NAME: lst:xps_csize_high_lreg
+# #+BEGIN_SRC python :results file :exports results
+# csize_plot("%s",
+#            series_lreg_plot,
+#            'imgs/csize-impact-high-lreg',
+#            (XPS_CSIZE_HIGH
+#             .on_value(lambda df: df.drop('success', axis='columns'))
+#             .on_value(lambda df: df.sum(axis='columns'))
+#             .on_value(debug)
+#             .to_dict()),
+#            legend='all')
+# #+END_SRC
+
+# #+CAPTION: Impact of the Delay on the
+# #+CAPTION: Completion Time (Linear Regression).
+# #+NAME: fig:xps_csize_high_lreg
+# #+ATTR_ORG: :width 100
+# #+RESULTS: lst:xps_csize_high_lreg
+# [[file:imgs/csize-impact-high-lreg.svg]]
+
+*** Cumulative Frequency Distribution
+#+NAME: lst:xps_csize_high_cdf
+#+BEGIN_SRC python :results file :exports results
+csize_plot("%s  (s)",
+           series_linear_plot,
+           'imgs/cluster-size-impact-high-cdf',
+           # Sum operations of each iteration, and then compute de
+           # cumulative frequency
+           (XPS_CSIZE_HIGH
+            .on_value(lambda df: df.drop('success', axis='columns'))
+            .on_value(lambda df: df.sum(axis='columns'))
+            .on_value(make_cumulative_frequency)
+            .to_dict()),
+           legend='all')
+#+END_SRC
+
+#+CAPTION: Impact of the Cluster Size on the
+#+CAPTION: Completion Time (Cumulative Frequency -- High).
+#+ATTR_ORG: :width 100
+#+RESULTS: lst:xps_csize_high_cdf
+[[file:imgs/cluster-size-impact-high-cdf.svg]]
+
+* Delay Impact
+In this test, the size of the database cluster is 9 and the delay
+varies between LAN, 100 and 300 ms of RTT. The test evaluates how the
+completion time of Rally scenarios varies, depending of RTT between
+nodes of the swarm.
+
+- TODO: describe the experimentation protocol
+- TODO: Link the github juice code
+
+** Plot                                                            :noexport:
+#+BEGIN_SRC python :results silent
+def delay_plot(ytitle: str,
+               plot: Callable[['xp.scenario',
+                               Dict['xp.delay', T],
+                               matplotlib.axes.Axes], None],
+               filepath: str,
+               xps: Dict[Tuple['xp.scenario', 'xp.rdbms', 'xp.delay'], T],
+               legend: Union['bottom-out', 'all'] = 'bottom-out'):
+    subfig_width  = 4 # inch
+    subfig_height = 4 # inch
+    nscns  = len(RALLY.keys()) # Number of scenarios
+    nrdbms = len(RDBMSS)       # Number of rdbms
+    fig, axs = plt.subplots(nrows=nrdbms,
+                            ncols=nscns,
+                            figsize=(subfig_width  * nscns,
+                                     subfig_height * nrdbms),
+                            tight_layout=True,
+                            sharex='col',
+                            sharey='col')
+    # Subplots for sncs x rdmbss
+    scns_rdbmss = [ (s, r) for s in enumerate(RALLY.keys()) for r in enumerate(RDBMSS) ]
+    for (iscn, scn), (irdbms, rdbms) in scns_rdbmss:
+        # Get subplot for `scn` and `rdbms`
+        ax = axs[irdbms][iscn]
+        # Get all experiments for `scn` and `rdbms`, indexed by the
+        # delay
+        delay_xps = { delay : xps.get((scn, rdbms, delay), None) for delay in DELAYS}
+        # Plot
+        plot(scn, delay_xps, ax)
+        # Only print y label for the first column
+        if iscn == 0:
+            ax.set_ylabel(ytitle % rdbms.title())
+        #
+        # Only print scenario name for the first row
+        if irdbms == 0:
+            fig_title = textwrap.shorten((scn.replace('KeystoneBasic.', '')
+                                             .replace('_', ' ')
+                                             .title()),
+                                         width=30,
+                                         placeholder='...')
+            ax.set_title(fig_title, loc='left')
+        #
+        # Remove x label except for the last row
+        # if irdbms != len(RDBMSS) - 1:
+        #     plt.setp(ax.get_xticklabels(), visible=False)
+        #
+        # Legend at the bottom of the view on the last row
+        if legend == 'bottom-out' and irdbms == len(RDBMSS) - 1:
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0 + box.height * 0.1,
+                             box.width, box.height * 0.9])
+            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1))
+        #
+        # Legend on all plot
+        if legend == 'all':
+            ax.legend()
+    #
+    fig.align_labels()
+    return savefig(fig, filepath)
+#+END_SRC
+
+** Throughput Expectations
+See [[http://enos.irisa.fr/html/wan_g5k/cpt10/][cpt10-lat*-los0/*.stats]] for raw measures.
+
+#+NAME: throughput-data
+#+CAPTION: Throughput Expectations
+| Delay (ms) | Throughput (Mbits/s) |
+|--------------+----------------------|
+|     0.150614 |          9410.991784 |
+|    20.000000 |          1206.381685 |
+|    50.000000 |           480.173601 |
+|   100.000000 |           234.189943 |
+|   200.000000 |           115.890071 |
+
+** Single
+#+BEGIN_SRC python :results silent
+XPS_DELAY_SINGLE = (XPS
+                    .filter(when_oss(9))
+                    .filter(compose(not_, is_high))
+                    .group_by(lambda xp: (xp.scenario, xp.rdbms, xp.delay))
+                    .map_on_value(reify_in_xpdf('success'))
+                    .map_on_value(attrgetter('dataframe'))
+                    .map_on_value(filter_percentile(.9))
+                    .on_value(lambda dfs: pd.concat(dfs.to_list())))
+#+END_SRC
+
+*** Mean of Keystone Operations
+#+NAME: lst:xps_delay_single
+#+BEGIN_SRC python :results file :exports results
+delay_plot("%s Completion Time (s)",
+           series_stackedbar_plot,
+           'imgs/delay-impact-single',
+           # Compute the mean and the std of the results
+           XPS_DELAY_SINGLE.on_value(lambda df: (df.median(), df.sum(axis=1).std())).to_dict())
+#+END_SRC
+
+#+CAPTION: Impact of the Delay on the Completion Time (one Rally).
+#+ATTR_ORG: :width 100
+#+RESULTS: lst:xps_delay_single
+[[file:imgs/delay-impact-single.svg]]
+
+*** Linear Regression
+#+NAME: lst:xps_delay_single_lreg
+#+BEGIN_SRC python :results file :exports results
+delay_plot("%s",
+           series_lreg_plot,
+           'imgs/delay-impact-single-lreg',
+           (XPS_DELAY_SINGLE
+            .on_value(lambda df: df.drop('success', axis='columns'))
+            .on_value(lambda df: df.sum(axis='columns'))
+            .to_dict()),
+           legend='all')
+#+END_SRC
+
+#+CAPTION: Impact of the Delay on the
+#+CAPTION: Completion Time (Linear Regression).
+#+NAME: fig:xps_delay_single_lreg
+#+ATTR_ORG: :width 100
+#+RESULTS: lst:xps_delay_single_lreg
+[[file:imgs/delay-impact-single-lreg.svg]]
+
+*** Cumulative Frequency Distribution
+#+NAME: lst:xps_delay_single_cdf
+#+BEGIN_SRC python :results file :exports results
+delay_plot("%s",
+           series_linear_plot,
+           'imgs/delay-impact-single-cdf',
+           (XPS_DELAY_SINGLE
+            .on_value(lambda df: df.drop('success', axis='columns'))
+            .on_value(lambda df: df.sum(axis='columns'))
+            .on_value(make_cumulative_frequency)
+            .to_dict()),
+           legend='all')
+#+END_SRC
+
+#+CAPTION: Impact of the Delay on the
+#+CAPTION: Completion Time (Cumulative Frequency).
+#+ATTR_ORG: :width 100
+#+RESULTS: lst:xps_delay_single_cdf
+[[file:imgs/delay-impact-single-cdf.svg]]
+** High
+#+BEGIN_SRC python :results silent
+XPS_DELAY_HIGH = (XPS
+                   .filter(when_oss(9))
+                   .filter(is_high)
+                   .group_by(lambda xp: (xp.scenario, xp.rdbms, xp.delay))
+                   .map_on_value(reify_in_xpdf('success'))
+                   .map_on_value(attrgetter('dataframe'))
+                   .map_on_value(filter_percentile(.9))
+                   .on_value(lambda dfs: pd.concat(dfs.to_list())))
+#+END_SRC
+
+*** Mean of Keystone Operations
+#+NAME: lst:xps_delay_high
+#+BEGIN_SRC python :results file :exports results
+delay_plot("%s Completion Time (s)",
+           series_stackedbar_plot,
+           'imgs/delay-impact-high',
+           # Compute the mean and the std of the results
+           XPS_DELAY_HIGH.on_value(lambda df: (df.mean(), df.sum(axis=1).std())).to_dict())
+#+END_SRC
+
+#+CAPTION: Impact of the Delay on the Completion Time (High).
+#+ATTR_ORG: :width 100
+#+RESULTS: lst:xps_delay_high
+[[file:imgs/delay-impact-high.svg]]
+
+*** Cumulative Frequency Distribution
+#+NAME: lst:xps_delay_high_cdf
+#+BEGIN_SRC python :results file :exports results
+delay_plot("%s",
+           series_linear_plot,
+           'imgs/delay-impact-high-cdf',
+           (XPS_DELAY_HIGH
+            .on_value(lambda df: df.drop('success', axis='columns'))
+            .on_value(lambda df: df.sum(axis='columns'))
+            .on_value(make_cumulative_frequency)
+            .to_dict()),
+           legend='all')
+#+END_SRC
+
+#+CAPTION: Impact of the Delay on the
+#+CAPTION: Completion Time (Cumulative Frequency -- High).
+#+ATTR_ORG: :width 100
+#+RESULTS: lst:xps_delay_high_cdf
+[[file:imgs/delay-impact-high-cdf.svg]]
+
+* Locality Impact
+** Extract                                                         :noexport:
+#+BEGIN_SRC python -r :results silent :noweb no-export
+@dataclass(frozen=True)
+class XPEdge:
+    scenario: str     # Rally scenario name (ref:xp-dataclass-start)
+    rdbms: str        # Name of the RDBMS (e,g, cockcroachdb, galera)
+    filepath: str     # Filepath of the json file
+    oss: int # Number of OpenStack instances
+    delay: int        # Delay between nodes
+    success: str      # Success rate (e.g., "100%")
+    distribution: int # Group Distribution (1: uniform lat, 2: 10,
+    dataframe: pd.DataFrame  # Results in a pandas 2d DataFrame (ref:xp-dataclass-end)
+
+def make_xpedge(rally_path: str) -> XPEdge:
+    # Find XP name in the `rally_path`
+    RE_XP = r'(?:mariadb|galera|cockroachdb)-[a-zA-Z0-9\-]+'
+    # Find XP params in the `rally_path` (e.g., cluster size, delay, ...)
+    RE_XP_PARAMS = r'(?P<db>[a-z]+)-(?P<oss>[0-9]+)-(?P<delay>[0-9]+)-(?P<distribution>[0-9]).*'
+    # Json path to the rally scenario's name
+    JPATH_SCN = '$.tasks[0].subtasks[0].title'
+    #
+    <<lst:dataframe_per_operations>> (ref:dataframe_per_operations)
+    #
+    with open(rally_path) as rally_json:
+        rally_values = objectpath.Tree(json.load(rally_json))
+        xp_info = re.match(RE_XP_PARAMS, re.findall(RE_XP, rally_path)[0]).groupdict()
+        success = success_rate(rally_values)
+        return XPEdge(
+            scenario = rally_values.execute(JPATH_SCN),
+            filepath = rally_path,
+            rdbms = xp_info.get('db'),
+            oss = int(xp_info.get('oss')),
+            delay = int(xp_info.get('delay')),
+            success = success,
+            distribution = int(xp_info.get('distribution')),
+            dataframe = dataframe_per_operations(rally_values)) if success else None
+
+def set_xpedge_df(xp: XPEdge, new_df: pd.DataFrame) -> XPEdge:
+    "Sets dataframe `new_df` of XP `xp`"
+    return XPEdge(scenario=xp.scenario,
+              filepath=xp.filepath,
+              rdbms=xp.rdbms,
+              oss=xp.oss,
+              delay=xp.delay,
+              success=xp.success,
+              distribution=xp.distribution,
+              dataframe=new_df)
+
+def reify_in_xpedgedf(attr: str) -> Callable[[XPEdge], XPEdge]:
+    "Pushes `XP.attr` attribute value into `XP.dataframe` under `attr` column"
+    # Curry
+    def _push(xp: XPEdge) -> XPEdge:
+        column_value = attrgetter(attr)(xp)
+        column_name  = attr
+        df_with_new_col = df_add_const_column(xp.dataframe, column_value, column_name)
+        return set_xpedge_df(xp, df_with_new_col)
+    #
+    return _push
+
+XPEDGE_PATHS = './ecotype-edge/'
+GALERA_XPEDGE_PATHS = glob.glob(XPEDGE_PATHS + 'galera-*/rally_home/*.json')
+CRDB_XPEDGE_PATHS = glob.glob(XPEDGE_PATHS + 'cockroachdb-*/rally_home/*.json')
+XPEDGES = seq(GALERA_XPEDGE_PATHS + CRDB_XPEDGE_PATHS).truth_map(make_xpedge).cache()
+#+END_SRC
+
+#+BEGIN_SRC python :results silent
+XPEDGES_DELAY_SINGLE = (XPEDGES
+                    .group_by(lambda xp: (xp.scenario, xp.rdbms, xp.distribution))
+                    .map_on_value(reify_in_xpedgedf('success'))
+                    .map_on_value(attrgetter('dataframe'))
+                    # .map_on_value(filter_percentile(.9))
+                    .on_value(lambda dfs: pd.concat(dfs.to_list()))
+                   )
+#+END_SRC
+** Plot                                                            :noexport:
+#+BEGIN_SRC python :results silent
+EDGE_RDBMSS = [ 'galera', 'cockroachdb' ]
+def edge_plot(ytitle: str,
+               plot: Callable[['xp.scenario',
+                               Dict['xp.delay', T],
+                               matplotlib.axes.Axes], None],
+               filepath: str,
+               xps: Dict[Tuple['xp.scenario', 'xp.rdbms', 'xp.delay'], T],
+               legend: Union['bottom-out', 'all'] = 'bottom-out'):
+    subfig_width  = 4 # inch
+    subfig_height = 4 # inch
+    nscns  = len(RALLY.keys()) # Number of scenarios
+    nrdbms = len(EDGE_RDBMSS)       # Number of rdbms
+    fig, axs = plt.subplots(nrows=nrdbms,
+                            ncols=nscns,
+                            figsize=(subfig_width  * nscns,
+                                     subfig_height * nrdbms),
+                            tight_layout=True,
+                            sharex='col',
+                            sharey='col')
+    # Subplots for sncs x rdmbss
+    scns_rdbmss = [ (s, r) for s in enumerate(RALLY.keys()) for r in enumerate(EDGE_RDBMSS) ]
+    for (iscn, scn), (irdbms, rdbms) in scns_rdbmss:
+        # Get subplot for `scn` and `rdbms`
+        ax = axs[irdbms][iscn]
+        # Get all experiments for `scn` and `rdbms`, indexed by the
+        # delay
+        delay_xps = { delay : xps.get((scn, rdbms, delay), None) for delay in [1, 2, 3]}
+        # Plot
+        plot(scn, delay_xps, ax)
+        # Only print y label for the first column
+        if iscn == 0:
+            ax.set_ylabel(ytitle % rdbms.title())
+        #
+        # Only print scenario name for the first row
+        if irdbms == 0:
+            fig_title = textwrap.shorten((scn.replace('KeystoneBasic.', '')
+                                             .replace('_', ' ')
+                                             .title()),
+                                         width=30,
+                                         placeholder='...')
+            ax.set_title(fig_title, loc='left')
+        #
+        # Remove x label except for the last row
+        if irdbms != len(EDGE_RDBMSS) - 1:
+            plt.setp(ax.get_xticklabels(), visible=False)
+        #
+        # Legend at the bottom of the view on the last row
+        if legend == 'bottom-out' and irdbms == len(EDGE_RDBMSS) - 1:
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0 + box.height * 0.1,
+                             box.width, box.height * 0.9])
+            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1))
+        #
+        # Legend on all plot
+        if legend == 'all':
+            ax.legend()
+    #
+    fig.align_labels()
+    return savefig(fig, filepath)
+#+END_SRC
+
+** Results
+*** Mean of Keystone Operations
+#+NAME: lst:xpedges_delay_single
+#+BEGIN_SRC python :results file :exports results
+edge_plot("%s Completion Time (s)",
+           series_stackedbar_plot,
+           'imgs/delay-edge-impact-single',
+           # Compute the mean and the std of the results
+           XPEDGES_DELAY_SINGLE.on_value(lambda df: (df.median(), df.sum(axis=1).std())).to_dict())
+#+END_SRC
+
+#+CAPTION: Impact of the Delay on the Completion Time (one Rally).
+#+ATTR_ORG: :width 100
+#+RESULTS: lst:xpedges_delay_single
+[[file:imgs/delay-edge-impact-single.svg]]
+
+*** Cumulative Frequency Distribution
+#+NAME: lst:xpedges_delay_single_cdf
+#+BEGIN_SRC python :results file :exports results
+edge_plot("%s",
+          series_linear_plot,
+          'imgs/delay-edge-impact-single-cdf',
+          (XPEDGES_DELAY_SINGLE
+            .on_value(lambda df: df.drop('success', axis='columns'))
+           .on_value(lambda df: df.sum(axis='columns'))
+           .on_value(make_cumulative_frequency)
+           .to_dict()),
+          legend='all')
+#+END_SRC
+
+#+CAPTION: Impact of the Delay on the
+#+CAPTION: Completion Time (Cumulative Frequency).
+#+ATTR_ORG: :width 100
+#+RESULTS: lst:xpedges_delay_single_cdf
+[[file:imgs/delay-edge-impact-single-cdf.svg]]
+
+* Do the size of the Database matter?
+From
+http://galeracluster.com/2016/08/optimized-state-snapshot-transfers-in-a-wan-environment/
+#+BEGIN_QUOTE
+If a node joins the cluster either for the first time or after a
+period of prolonged downtime, it may need to obtain a complete
+snapshot of the database from some other node. This operation is
+called State Snapshot Transfer or SST, and is often reasonably quick
+in a LAN environment.
+
+In a geo-distributed cluster, however, the dataset may need to travel
+over a slow WAN link. A transfer that takes seconds over a 10Gb
+network can take hours over a cable modem.
+
+SST does not happen during the normal operation of the cluster, but
+may be needed during an outage situation which is already a stressful
+time for the DevOps. During SST, the joining node is not available and
+the donating node may be in a read-only state or have degraded
+performance.
+#+END_QUOTE
+
+Note: CRDB may shine during commissioning over WAN. It could be cool
+to add a test on that particular topic (ie, measuring the downtime
+when commissioning a new node -- it should be 0 on CRDB).
+
+* Appendix
+** Detailed Rally scenarios
+*** keystone/authenticate-user-and-validate-token
+Description: authenticate and validate a keystone token.
+
+Definition Code:
+[[https://github.com/openstack/rally-openstack/blob/6158c1139c0a4d88cab74481c5cbfc8be398f481/samples/tasks/scenarios/keystone/authenticate-user-and-validate-token.yaml][samples/tasks/scenarios/keystone/authenticate-user-and-validate-token]]
+
+Source Code:
+[[https://github.com/openstack/rally-openstack/blob/b1ae405b7fab355f3062cdb56a5b187fc6f2907f/rally_openstack/scenarios/keystone/basic.py#L111-L120][rally_openstack.scenarios.keystone.basic.AuthenticateUserAndValidateToken]]
+
+List of keystone functionalities:
+1. keystone_v3.fetch_token
+2. keystone_v3.validate_token
+
+%Reads/%Writes: 96.46/3.54
+
+Number of runs: 20
+
+*** keystone/create-add-and-list-user-roles
+Description: create user role, add it and list user roles for given
+user.
+
+Definition Code:
+[[https://github.com/openstack/rally-openstack/blob/6158c1139c0a4d88cab74481c5cbfc8be398f481/samples/tasks/scenarios/keystone/create-add-and-list-user-roles.yaml][samples/tasks/scenarios/keystone/create-add-and-list-user-roles]]
+
+Source Code:
+[[https://github.com/openstack/rally-openstack/blob/b1ae405b7fab355f3062cdb56a5b187fc6f2907f/rally_openstack/scenarios/keystone/basic.py#L214-L228][rally_openstack.scenarios.keystone.basic.CreateAddAndListUserRoles]]
+
+List of keystone functionalities:
+1. keystone_v3.create_role
+2. keystone_v3.add_role
+3. keystone_v3.list_roles
+
+%Reads/%Writes: 96.22/3.78
+
+Number of runs: 100
+
+*** keystone/create-and-list-tenants
+Description: create a keystone tenant with random name and list all
+tenants.
+
+Definition Code:
+[[https://github.com/openstack/rally-openstack/blob/6158c1139c0a4d88cab74481c5cbfc8be398f481/samples/tasks/scenarios/keystone/create-and-list-tenants.yaml][samples/tasks/scenarios/keystone/create-and-list-tenants]]
+
+Source Code:
+[[https://github.com/openstack/rally-openstack/blob/b1ae405b7fab355f3062cdb56a5b187fc6f2907f/rally_openstack/scenarios/keystone/basic.py#L166-L181][rally_openstack.scenarios.keystone.basic.CreateAndListTenants]]
+
+List of keystone functionalities:
+1. keystone_v3.create_project
+2. keystone_v3.list_projects
+
+%Reads/%Writes: 92.12/7.88
+
+Number of runs: 10
+
+*** keystone/get-entities
+Description: get instance of a tenant, user, role and service by id's.
+An ephemeral tenant, user, and role are each created. By default,
+fetches the 'keystone' service.
+
+List of keystone functionalities:
+1. keystone_v3.create_project
+2. keystone_v3.create_user
+3. keystone_v3.create_role
+   1) keystone_v3.list_roles
+   2) keystone_v3.add_role
+4. keystone_v3.get_project
+5. keystone_v3.get_user
+6. keystone_v3.get_role
+7. keystone_v3.list_services
+8. keystone_v3.get_services
+
+%Reads/%Writes: 91.9/8.1
+
+Definition Code:
+[[https://github.com/openstack/rally-openstack/blob/6158c1139c0a4d88cab74481c5cbfc8be398f481/samples/tasks/scenarios/keystone/get-entities.yaml][samples/tasks/scenarios/keystone/get-entities]]
+
+Source Code:
+[[https://github.com/openstack/rally-openstack/blob/b1ae405b7fab355f3062cdb56a5b187fc6f2907f/rally_openstack/scenarios/keystone/basic.py#L231-L261][rally_openstack.scenarios.keystone.basic.GetEntities]]
+
+Number of runs: 100
+
+*** keystone/create-user-update-password
+Description: create user and update password for that user.
+
+List of keystone functionalities:
+1. keystone_v3.create_user
+2. keystone_v3.update_user
+
+%Reads/%Writes: 89.79/10.21
+
+Definition Code:
+[[https://github.com/openstack/rally-openstack/blob/6158c1139c0a4d88cab74481c5cbfc8be398f481/samples/tasks/scenarios/keystone/create-user-update-password.yaml][samples/tasks/scenarios/keystone/create-user-update-password]]
+
+Source Code:
+[[https://github.com/openstack/rally-openstack/blob/b1ae405b7fab355f3062cdb56a5b187fc6f2907f/rally_openstack/scenarios/keystone/basic.py#L306-L320][rally_openstack.scenarios.keystone.basic.CreateUserUpdatePassword]]
+
+Number of runs: 100
+
+*** keystone/create-user-set-enabled-and-delete
+Description: create a keystone user, enable or disable it, and delete
+it.
+
+List of keystone functionalities:
+1. keystone_v3.create_user
+2. keystone_v3.update_user
+3. keystone_v3.delete_user
+
+%Reads/%Writes: 91.07/8.93
+
+Definition Code:
+[[https://github.com/openstack/rally-openstack/blob/6158c1139c0a4d88cab74481c5cbfc8be398f481/samples/tasks/scenarios/keystone/create-user-set-enabled-and-delete.yaml][samples/tasks/scenarios/keystone/create-user-set-enabled-and-delete]]
+
+Source Code:
+[[https://github.com/openstack/rally-openstack/blob/b1ae405b7fab355f3062cdb56a5b187fc6f2907f/rally_openstack/scenarios/keystone/basic.py#L75-L91][rally_openstack.scenarios.keystone.basic.CreateUserSetEnabledAndDelete]]
+
+Number of runs: 100
+
+*** keystone/create-and-list-users
+Description: create a keystone user with random name and list all
+users.
+
+List of keystone functionalities:
+1. keystone_v3.create_user
+2. keystone_v3.list_users
+
+%Reads/%Writes: 92.05/7.95
+
+Definition Code:
+[[https://github.com/openstack/rally-openstack/blob/6158c1139c0a4d88cab74481c5cbfc8be398f481/samples/tasks/scenarios/keystone/create-add-and-list-user-roles.yaml][samples/tasks/scenarios/keystone/create-and-list-users]]
+
+Source Code:
+[[https://github.com/openstack/rally-openstack/blob/b1ae405b7fab355f3062cdb56a5b187fc6f2907f/rally_openstack/scenarios/keystone/basic.py#L145-L163][rally_openstack.scenarios.keystone.basic.CreateAndListUsers]].
+
+Number of runs: 100
+
+
+* Footer
+#+BEGIN_EXPORT html
+<script type="text/javascript">
+$(document).ready( function () {
+  $('.table-striped').DataTable({
+    searching: false,
+    stateSave: false,
+    ordering: false,
+    autowidth: false
+  });
+
+  $('.dataTables_length').hide();
+});
+</script>
+#+END_EXPORT
