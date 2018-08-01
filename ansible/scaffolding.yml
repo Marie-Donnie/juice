@@ -5,6 +5,13 @@
     - { role: common,
         tags: common }
 
+- name: Deploy the grafana
+  hosts: control
+  roles:
+    - { role: grafana,
+        tags: grafana,
+        when: enable_monitoring | bool }
+
 - name: Install registry
   hosts: all
   roles :
@@ -34,15 +41,15 @@
 - name: MariaDB deployment
   hosts: database[0]
   roles:
-    - { role: mariadb,
+    - { role: database,
         tags: mariadb,
         when: db == "mariadb" }
 
-- name: "{{ db }} deployment"
- hosts: database
- roles:
+- name: "{{ db }} deployment (Non Mariadb)"
+  hosts: database
+  roles:
    - { role: database,
-       tags: {{ db }},
+       tags: "{{ db }}",
        when: db != "mariadb" }
 
 - name: Install monitoring agents

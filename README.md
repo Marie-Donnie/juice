@@ -13,7 +13,7 @@ cd juice
 ```
 
 ```bash
-virtualenv venv
+virtualenv -p python3 venv 
 source venv/bin/activate
 pip install -U pip
 pip install -r requirements.txt
@@ -23,13 +23,15 @@ pip install -r requirements.txt
 ## Configuration
 
 There is a sample configuration you can use `cp conf.yaml.sample conf.yaml`
-You can then change *conf.yaml* according to your needs.
+You can then change *conf.yaml* according to your needs. For instance, 
+change the value of database from cockroachdb to mariadb or galera to go 
+with the mariadb or a galera replicated database.
 
 ## Launch
 
-Launch with `./juice.py deploy` or `./juice.py deploy --db=<db>` with db being 'cockroachdb' (default) or 'mariadb'.
+Launch with `./juice.py deploy`. 
 
-Once it has been launched, you can destroy the containers using `./juice destroy` and then restart them with `./juice prepare --db=<db>`.
+Once it has been launched, you can destroy the containers using `./juice destroy` and then restart them with `./juice deploy`.
 
 ## Full experiment
 
@@ -47,7 +49,7 @@ Use `./juice.py info` to get informations about current environment. You can for
 
 #### Sysbench
 
-You can launch sysbench tests afterwards using `./juice stress --db=<db>`.
+You can launch sysbench tests afterwards using `./juice stress`.
 
 #### Rally (CockroachDB only for now)
 
@@ -113,16 +115,13 @@ Options:
 
 Commands:
     deploy         Claim resources from g5k and configure them
-    g5k            Claim resources on Grid'5000 (from a frontend)
-    info           Show information of the actual deployment
-    inventory      Generate the Ansible inventory file
-    prepare        Configure the resources
-	emulate        Emulate network using tc
-    stress         Launch sysbench tests (after a deployment)
     openstack      Add OpenStack Keystone to the deployment
     rally          Benchmark the Openstack
+    stress         Launch sysbench tests (after a deployment)
+	  emulate        Emulate network using tc
     backup         Backup the environment
     destroy        Destroy all the running dockers (not the resources)
+    info           Show information of the actual deployment
 
 Run 'juice COMMAND --help' for more information on a command
 ```

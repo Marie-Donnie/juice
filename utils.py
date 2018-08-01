@@ -1,5 +1,14 @@
+import os
+from copy import deepcopy
 from functools import wraps
+
 from docopt import docopt
+from enoslib.api import run_ansible as enos_run_ansible
+from enoslib.task import enostask
+
+JUICE_PATH = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+ANSIBLE_PATH = os.path.join(JUICE_PATH, 'ansible')
+SYMLINK_NAME = os.path.abspath(os.path.join(os.getcwd(), 'current'))
 
 DOC_GLOBAL = {}
 
@@ -9,13 +18,14 @@ def doc(doc_param=None):
         @wraps(fn)
         def decorated(*args, **kwargs):
             # Format the arguments for convenient use
+            new_kwargs = deepcopy(kwargs)
             for k, v in kwargs.items():
                 if k.startswith('--'):
-                    kwargs[k.lstrip('--')] = v
+                    new_kwargs[k.lstrip('--')] = v
                 elif k.startswith('-'):
-                    kwargs[k.lstrip('-')] = v
+                    new_kwargs[k.lstrip('-')] = v
             # Proceeds with the function execution
-            fn(*args, **kwargs)
+            fn(*args, **new_kwargs)
         DOC_GLOBAL[fn.__name__] = decorated
         # https://stackoverflow.com/questions/10307696/how-to-put-a-variable-into-python-docstring
         if doc_param:
@@ -39,8 +49,17 @@ Usage:
                                               error_lookup.__doc__))
 
 
-def db_validation(db):
-    databases = ['mariadb', 'cockroachdb', 'galera']
-    if db not in databases:
-        exit("%s is not an allowed database. Try one of the following: %s"
-             % (db, ', '.join(databases)))
+@enostask()
+def run_ansible(playbook, extra_vars=None, tags=None,
+                on_error_continue=False, env=None, **kwargs):
+    """State combinator for enoslib.api.run_ansible
+
+    Reads the inventory path from the state and then applied and
+    returns value of `enoslib.api.run_ansible`.
+
+    """
+    inventory = env["inventory"]
+    playbooks = [os.path.join(ANSIBLE_PATH, playbook)]
+
+    return enos_run_ansible(playbooks, inventory, extra_vars, tags,
+                            on_error_continue)

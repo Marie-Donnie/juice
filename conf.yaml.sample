@@ -1,3 +1,6 @@
+# One of cockroachdb, mariadb, galera
+database: cockroachdb
+
 g5k:
   # reservation: "2018-03-12 19:00:01"
   walltime: "05:30:00"

@@ -1,7 +1,14 @@
+
+# Use our proper version of execo with a fix for python3, while
+# waiting for official 2.6.4 to be out
+git+https://github.com/rcherrueau/execo.git@2.6.4
+
 # creating command interfaces
 docopt
+
 # the library it is built on
-git+https://github.com/BeyondTheClouds/enoslib.git@master
+# enoslib==1.6.0
+git+https://github.com/BeyondTheClouds/enoslib.git@master # fix the read of ansible/group_vars/all.yml
 # for the analysis of results
 pandas
 matplotlib

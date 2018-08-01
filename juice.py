@@ -12,16 +12,13 @@ Options:
 
 Commands:
     deploy         Claim resources from g5k and configure them
-    g5k            Claim resources on Grid'5000 (from a frontend)
-    info           Show information of the actual deployment
-    inventory      Generate the Ansible inventory file
-    prepare        Configure the resources
-    emulate        Emulate network using tc
-    stress         Launch sysbench tests (after a deployment)
     openstack      Add OpenStack Keystone to the deployment
+    stress         Launch sysbench tests (after a deployment)
     rally          Benchmark the Openstack
+    emulate        Emulate network using tc
     backup         Backup the environment
     destroy        Destroy all the running dockers (not the resources)
+    info           Show information of the actual deployment
 
 Run 'juice COMMAND --help' for more information on a command
 """
@@ -37,21 +34,15 @@ import operator
 import pickle
 
 from docopt import docopt
-from enoslib.api import (run_ansible, generate_inventory,
-                         emulate_network, validate_network)
+from enoslib.api import (generate_inventory, emulate_network,
+                         validate_network)
 from enoslib.task import enostask
 from enoslib.infra.enos_g5k.provider import G5k
 
-from utils.doc import doc, doc_lookup, db_validation
+from utils import (JUICE_PATH, ANSIBLE_PATH, SYMLINK_NAME, doc,
+                   doc_lookup, run_ansible)
 
 logging.basicConfig(level=logging.DEBUG)
-
-DEFAULT_CONF = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_CONF = os.path.join(DEFAULT_CONF, "conf.yaml")
-
-SYMLINK_NAME = os.path.abspath(os.path.join(os.getcwd(), 'current'))
-
-JUICE_PATH = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 
 tc = {
     "enable": True,
@@ -68,48 +59,57 @@ tc = {
     "groups": ['database'],
 }
 
+######################################################################
+## SCAFFOLDING
+######################################################################
+
 
 @doc()
-def deploy(conf, db, xp_name=None, **kwargs):
+def deploy(conf, tags, xp_name=None, **kwargs):
     """
-usage: juice deploy [--conf CONFIG_PATH] [--db {mariadb,cockroachdb,galera}]
+usage: juice deploy [--conf CONFIG_PATH] [--tags TAGS...] [--force]
 
 Claim resources from g5k and configure them.
 
 Options:
   --conf CONFIG_PATH    Path to the configuration file describing the
                         deployment [default: ./conf.yaml]
-  --db DATABASE         Database to deploy on [default: cockroachdb]
+  --tags TAGS           Only run tasks relative to the specific tags
+                        [default: read-config g5k inventory prepare]
+  --force               Force kadeploy3 to re-install the environment
     """
     config = {}
 
-    if isinstance(conf, basestring):
-        # Get the config object from a yaml file
-        with open(conf) as f:
-            config = yaml.load(f)
-    elif isinstance(conf, dict):
-        # Get the config object from a dict
-        config = conf
-    else:
-        # Data format error
-        sys.exit(65)
+    if 'read-config' in tags:
+      if isinstance(conf, str):
+          # Get the config object from a yaml file
+          with open(conf) as f:
+              config = yaml.load(f)
+      elif isinstance(conf, dict):
+          # Get the config object from a dict
+          config = conf
+      else:
+          # Data format error
+          raise Exception(
+              ('conf is type {!r} while it should be',
+               'a yaml file or a dict').format(type(conf)))
 
-    db_validation(db)
+    if 'g5k' in tags:
+        g5k(env=xp_name, config=config, **kwargs)
+        logging.info("Wait 30 seconds for eth to be ready...")
+        time.sleep(30)
 
-    g5k(env=xp_name, config=config, **kwargs)
-    time.sleep(30)
-    inventory()
-    prepare(db=db)
+    if 'inventory' in tags:
+        inventory()
+
+    if 'prepare' in tags:
+        prepare()
 
 
-@doc()
 @enostask(new=True)
-def g5k(env=None, force=False, config=None,  **kwargs):
-    """
-usage: juice g5k
+def g5k(env=None, force=False, config=None, **kwargs):
+    "Claim resources on Grid'5000 (from a frontend)"
 
-Claim resources on Grid'5000 (from a frontend)
-    """
     provider = G5k(config["g5k"])
     roles, networks = provider.init(force_deploy=force)
     env["config"] = config
@@ -117,93 +117,139 @@ Claim resources on Grid'5000 (from a frontend)
     env["networks"] = networks
     env["tasks_ran"] = ['g5k']
     env["latency"] = "0ms"
+    env["db"] = config.get('database', 'cockroachdb')
 
 
-@doc()
 @enostask()
 def inventory(env=None, **kwargs):
-    """
-usage: juice inventory
+    "Generate the Ansible inventory file, requires a g5k execution"
 
-Generate the Ansible inventory file, requires a g5k execution
-    """
     roles = env["roles"]
     networks = env["networks"]
     env["inventory"] = os.path.join(env["resultdir"], "hosts")
-    generate_inventory(roles, networks, env["inventory"], check_networks=True)
+    generate_inventory(roles, networks, env["inventory"],
+                       check_networks=True)
     env["tasks_ran"].append('inventory')
 
 
-@doc()
 @enostask()
-def prepare(env=None, db='cockroachdb', **kwargs):
-    """
-usage: juice prepare [--db {mariadb,cockroachdb,galera}]
+def prepare(env=None, **kwargs):
+    """Configure the resources, requires both g5k and inventory
+executions
 
-Configure the resources, requires both g5k and inventory executions
-
-  --db DATABASE         Database to deploy on [default: cockroachdb]
     """
-    db_validation(db)
     # Generate inventory
     extra_vars = {
         "registry": env["config"]["registry"],
-        "db": db,
+        "db": env['db'],
         # Set monitoring to True by default
         "enable_monitoring": env['config'].get('enable_monitoring', True)
     }
-    env["db"] = db
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
-    run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")],
-                env["inventory"], extra_vars=extra_vars)
+    run_ansible('scaffolding.yml', extra_vars=extra_vars)
     env["tasks_ran"].append('prepare')
 
 
 @doc()
 @enostask()
-def stress(db, env=None, **kwargs):
+def backup(env=None, **kwargs):
     """
-usage: juice stress [--db {mariadb,cockroachdb,galera}]
+usage: juice backup
 
-Launch sysbench tests
-
-  --db DATABASE         Database to test [default: cockroachdb]
+Backup the environment, requires g5k, inventory and prepare executions
     """
-    db_validation(db)
-    # Generate inventory
+    db = env.get('db', 'cockroachdb')
+    nb_nodes = len(env["roles"]["database"])
+    latency = env["latency"]
     extra_vars = {
-        "registry": env["config"]["registry"],
+        "enos_action": "backup",
         "db": db,
-        "enos_action": "stress"
+        "backup_dir": os.path.join(os.getcwd(),
+                                   "current/backup/%snodes-%s-%s"
+                                   % (nb_nodes, db, latency)),
+        "tasks_ran": env["tasks_ran"],
+        # Set monitoring to True by default
+        "enable_monitoring": env['config'].get('enable_monitoring', True),
+        "rally_nodes": env.get('rally_nodes', [])
     }
-    # use deploy of each role
-    run_ansible([os.path.join(JUICE_PATH, "ansible/stress.yml")],
-                env["inventory"], extra_vars=extra_vars)
-    env["tasks_ran"].append('stress')
+    run_ansible('scaffolding.yml', extra_vars=extra_vars)
+    run_ansible('openstack.yml', extra_vars=extra_vars)
+    run_ansible('rally.yml', extra_vars=extra_vars)
+    env["tasks_ran"].append('backup')
 
 
 @doc()
 @enostask()
-def openstack(db, env=None, **kwargs):
+def destroy(env=None, **kwargs):
     """
-usage: juice openstack [--db {mariadb,cockroachdb,galera}]
+usage: juice destroy
 
-Launch OpenStack
-
-  --db DATABASE         Database to test [default: cockroachdb]
+Destroy all the running dockers (not destroying the resources), requires g5k
+and inventory executions
     """
-    db_validation(db)
+    extra_vars = {}
+    # Call destroy on each component
+    extra_vars.update({
+        "enos_action": "destroy",
+        "db": env.get('db', 'cockroachdb'),
+        "tasks_ran": env["tasks_ran"],
+        # Set monitoring to True by default
+        "enable_monitoring": env['config'].get('enable_monitoring', True),
+        "rally_nodes": env.get('rally_nodes', [])
+    })
+    run_ansible('scaffolding.yml', extra_vars=extra_vars)
+    run_ansible('openstack.yml', extra_vars=extra_vars)
+    run_ansible('rally.yml', extra_vars=extra_vars)
+    env["tasks_ran"].append('destroy')
+
+
+######################################################################
+## Scaffolding ++
+######################################################################
+
+
+@doc()
+@enostask()
+def openstack(env=None, **kwargs):
+    """
+usage: juice openstack
+
+Launch OpenStack.
+    """
     # Generate inventory
     extra_vars = {
         "registry": env["config"]["registry"],
-        "db": db,
+        "db": env.get('db', 'cockroachdb'),
     }
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
-    run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")],
-                env["inventory"], extra_vars=extra_vars)
+    run_ansible('openstack.yml', extra_vars=extra_vars)
     env["tasks_ran"].append('openstack')
+
+
+######################################################################
+## Stress
+######################################################################
+
+
+@doc()
+@enostask()
+def stress(env=None, **kwargs):
+    """
+usage: juice stress
+
+Launch sysbench tests.
+    """
+    # Generate inventory
+    extra_vars = {
+        "registry": env["config"]["registry"],
+        "db": env.get('db', 'cockroachdb'),
+        "enos_action": "stress"
+    }
+    # use deploy of each role
+    run_ansible('stress.yml', extra_vars=extra_vars)
+    env["tasks_ran"].append('stress')
 
 
 @doc()
@@ -225,12 +271,12 @@ keystone]
                  directory)
 
     if burst:
-        rally = map(operator.attrgetter('address'),
-                    reduce(operator.add,
-                           [hosts for role, hosts in env['roles'].iteritems()
-                            if role.startswith('database')]))
+        rally = list(map(operator.attrgetter('address'),
+                         reduce(operator.add,
+                                [hosts for role, hosts in env['roles'].items()
+                                 if role.startswith('database')])))
     else:
-        rally = [hosts[1].address for role, hosts in env['roles'].iteritems()
+        rally = [hosts[1].address for role, hosts in env['roles'].items()
                  if role.startswith('database')]
     env['rally_nodes'] = rally
     extra_vars = {
@@ -244,9 +290,13 @@ keystone]
 
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
-    run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")],
-                env["inventory"], extra_vars=extra_vars)
+    run_ansible('rally.yml', extra_vars=extra_vars)
     env["tasks_ran"].append('rally')
+
+
+######################################################################
+## Other
+######################################################################
 
 
 @doc(tc)
@@ -297,76 +347,17 @@ Options:
     if not out:
         pprint.pprint(env)
     elif out == 'json':
-        print json.dumps(env, default=operator.attrgetter('__dict__'))
+        print(json.dumps(env, default=operator.attrgetter('__dict__')))
     elif out == 'pickle':
-        print pickle.dumps(env)
+        print(pickle.dumps(env))
     elif out == 'yaml':
-        print yaml.dump(env)
+        print(yaml.dump(env))
     else:
         print("--out doesn't suppport %s output format" % out)
         print(info.__doc__)
 
 
-@doc()
-@enostask()
-def backup(env=None, **kwargs):
-    """
-usage: juice backup
-
-Backup the environment, requires g5k, inventory and prepare executions
-    """
-    db = env.get('db', 'cockroachdb')
-    nb_nodes = len(env["roles"]["database"])
-    latency = env["latency"]
-    extra_vars = {
-        "enos_action": "backup",
-        "backup_dir": os.path.join(os.getcwd(),
-                                   "current/backup/%snodes-%s-%s"
-                                   % (nb_nodes, db, latency)),
-        "tasks_ran": env["tasks_ran"],
-        # Set monitoring to True by default
-        "enable_monitoring": env['config'].get('enable_monitoring', True),
-        "rally_nodes": env.get('rally_nodes', [])
-    }
-    run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")],
-                env["inventory"], extra_vars=extra_vars)
-    run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")],
-                env["inventory"], extra_vars=extra_vars)
-    run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")],
-                env["inventory"], extra_vars=extra_vars)
-    env["tasks_ran"].append('backup')
-
-
-@doc()
-@enostask()
-def destroy(env=None, **kwargs):
-    """
-usage: juice destroy
-
-Destroy all the running dockers (not destroying the resources), requires g5k
-and inventory executions
-    """
-    extra_vars = {}
-    # Call destroy on each component
-    extra_vars.update({
-        "enos_action": "destroy",
-        "db": env.get('db', 'cockroachdb'),
-        "tasks_ran": env["tasks_ran"],
-        # Set monitoring to True by default
-        "enable_monitoring": env['config'].get('enable_monitoring', True),
-        "rally_nodes": env.get('rally_nodes', [])
-    })
-    run_ansible([os.path.join(JUICE_PATH, "ansible/prepare.yml")],
-                env["inventory"], extra_vars=extra_vars)
-    run_ansible([os.path.join(JUICE_PATH, "ansible/openstack.yml")],
-                env["inventory"], extra_vars=extra_vars)
-    run_ansible([os.path.join(JUICE_PATH, "ansible/rally.yml")],
-                env["inventory"], extra_vars=extra_vars)
-    env["tasks_ran"].append('destroy')
-
-
 if __name__ == '__main__':
-
     args = docopt(__doc__,
                   version='juice version 1.0.0',
                   options_first=True)

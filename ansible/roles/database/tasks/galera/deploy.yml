@@ -18,7 +18,7 @@
 
 - name: Generate the configuration file
   template:
-    src: mariadb.conf.j2
+    src: mariadb-galera.conf.j2
     dest: /database/mysql.conf.d/mysql_server.cnf
 
 - name: Start the MariaDB-Galera first container
