@@ -1,14 +1,18 @@
-import os
 from copy import deepcopy
 from functools import wraps
+import logging
+import os
+import time
 
 from docopt import docopt
 from enoslib.api import run_ansible as enos_run_ansible
 from enoslib.task import enostask
 
+
 JUICE_PATH = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 ANSIBLE_PATH = os.path.join(JUICE_PATH, 'ansible')
 SYMLINK_NAME = os.path.abspath(os.path.join(os.getcwd(), 'current'))
+
 
 DOC_GLOBAL = {}
 
@@ -20,10 +24,8 @@ def doc(doc_param=None):
             # Format the arguments for convenient use
             new_kwargs = deepcopy(kwargs)
             for k, v in kwargs.items():
-                if k.startswith('--'):
-                    new_kwargs[k.lstrip('--')] = v
-                elif k.startswith('-'):
-                    new_kwargs[k.lstrip('-')] = v
+                if k.startswith('-'):
+                    new_kwargs[k.lstrip('-').replace('-', '_')] = v
             # Proceeds with the function execution
             fn(*args, **new_kwargs)
         DOC_GLOBAL[fn.__name__] = decorated
@@ -63,3 +65,17 @@ def run_ansible(playbook, extra_vars=None, tags=None,
 
     return enos_run_ansible(playbooks, inventory, extra_vars, tags,
                             on_error_continue)
+
+######################################################################
+# Provider deployments
+from enoslib.infra.enos_g5k.provider import G5k
+
+@enostask(new=True)
+def g5k_deploy(g5k_config, env=None, force_deploy=False, **kwargs):
+    provider = G5k(g5k_config)
+    roles, networks = provider.init(force_deploy=force_deploy)
+    env['roles'] = roles
+    env['networks'] = networks
+    logging.info('Wait 30 seconds for iface to be ready...')
+    time.sleep(30)
+    return env

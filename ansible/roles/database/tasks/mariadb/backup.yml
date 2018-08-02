@@ -1,0 +1,13 @@
+---
+- name: Find the location of MariaDB log
+  command: >
+    docker inspect --format {% raw %}{{.LogPath}}{% endraw %}
+           mariadb-{{ inventory_hostname_short }}
+  register: mariadb_log
+
+- name: Fetching MariaDB log
+  fetch:
+    src: "{{ mariadb_log.stdout }}"
+    dest: "{{ backup_dir }}/mariadb-{{ inventory_hostname_short }}-log.json"
+    flat: yes
+  ignore_errors: True

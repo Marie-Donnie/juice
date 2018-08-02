@@ -1,1 +1,10 @@
 ---
+- name: Unstack
+  command: /opt/stack/devstac/unstack.sh
+  args:
+    removes: /tmp/stack-logs
+  become: true
+  become_user: stack
+
+- name: Clear journalctl
+  command: journalctl --vacuum-time=1s

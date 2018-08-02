@@ -30,7 +30,7 @@ SITE = 'nantes'
 MAX_CLUSTER_SIZE = max(CLUSTER_SIZES)
 
 CONF = {
-  'enable_monitoring': True,
+  'monitoring': True,
   'g5k': {'dhcp': True,
           'env_name': 'debian9-x64-nfs',
           'job_name': JOB_NAME,

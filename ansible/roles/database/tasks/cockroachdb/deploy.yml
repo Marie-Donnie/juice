@@ -1,8 +1,8 @@
 ---
 # See https://www.cockroachlabs.com/docs/stable/start-a-local-cluster-in-docker.html
-- name: Mount /database in tmpfs to store CockroachDB
+- name: Mount /database-cockroachdb in tmpfs to store CockroachDB
   mount:
-    path: /database
+    path: /database-cockroachdb
     src: tmpfs
     fstype: tmpfs
     state: mounted
@@ -11,14 +11,14 @@
 - name: Start the first CockroachDB node
   docker_container:
     name: "cockroachdb-{{ inventory_hostname_short }}"
-    image: "cockroachdb/cockroach:v2.0.1"
+    image: "cockroachdb/cockroach:v2.0.4"
     # hostname: "{{ inventory_hostname }}"
     detach: True
     ports:
       - 26257:26257
       - 8080:8080
     volumes:
-      - "/database:/cockroach/cockroach-data"
+      - "/database-cockroachdb:/cockroach/cockroach-data"
     command: >
       start --insecure
       --advertise-host="{{ hostvars[inventory_hostname]['ansible_'+ database_network]['ipv4']['address'] }}"
@@ -35,13 +35,13 @@
 - name: Start other CockroachDB nodes
   docker_container:
     name: "cockroachdb-{{ inventory_hostname_short }}"
-    image: "cockroachdb/cockroach:v2.0.1"
+    image: "cockroachdb/cockroach:v2.0.4"
     detach: True
     ports:
       - 26257:26257
       - 8080:8080
     volumes:
-      - "/database:/cockroach/cockroach-data"
+      - "/database-cockroachdb:/cockroach/cockroach-data"
     command: >
       start --insecure
       --join="{{ hostvars[dbmaster_node]['ansible_'+ database_network].ipv4.address }}"

@@ -1,14 +1,9 @@
 ---
-
-- name: Remove containers
-  shell: >
-    docker rm $(docker ps -a | grep rally | grep -oEe '^([a-z]|[0-9]){12}')
-  when:
-    - '"rally" in tasks_ran'
+# - name: Remove containers
+#   shell: >
+#     docker rm $(docker ps -a | grep rally | grep -oEe '^([a-z]|[0-9]){12}')
 
 - name: Remove volume
   file:
     state: absent
     path: /root/rally_home/
-  when:
-    - '"rally" in tasks_ran'

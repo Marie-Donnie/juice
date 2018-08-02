@@ -1,6 +1,9 @@
 # One of cockroachdb, mariadb, galera
 database: cockroachdb
 
+# Should we deployed the monitoring stack?
+monitoring: "yes"
+
 g5k:
   # reservation: "2018-03-12 19:00:01"
   walltime: "05:30:00"
@@ -38,16 +41,14 @@ g5k:
         type: kavlan
         site: rennes
 
-enable_monitoring: true
 
 registry:
   type: internal
   ceph: True
   ceph_id: discovery
   ceph_keyring: /home/discovery/.ceph/ceph.client.discovery.keyring
-  ceph_mon_host: 
+  ceph_mon_host:
     - ceph0.rennes.grid5000.fr
     - ceph1.rennes.grid5000.fr
     - ceph2.rennes.grid5000.fr
   ceph_rbd: discovery_kolla_registry/datas
-

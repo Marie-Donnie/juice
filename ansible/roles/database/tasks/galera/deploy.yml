@@ -1,25 +1,25 @@
 ---
 # See https://withblue.ink/2016/03/09/galera-cluster-mariadb-coreos-and-docker-part-1.html
-- name: Mount /database in tmpfs to store MariaDB
+- name: Mount /database-galera in tmpfs to store MariaDB
   mount:
-    path: /database
+    path: /database-galera
     src: tmpfs
     fstype: tmpfs
     state: mounted
     opts: size=16G
 
-- name: Create MariaDB store and conf directories in /database
+- name: Create MariaDB store and conf directories in /database-galera
   file:
     path: "{{ item }}"
     state: directory
   with_items:
-    - /database/data
-    - /database/mysql.conf.d
+    - /database-galera/data
+    - /database-galera/mysql.conf.d
 
 - name: Generate the configuration file
   template:
     src: mariadb-galera.conf.j2
-    dest: /database/mysql.conf.d/mysql_server.cnf
+    dest: /database-galera/mysql.conf.d/mysql_server.cnf
 
 - name: Start the MariaDB-Galera first container
   docker_container:
@@ -35,8 +35,8 @@
       - "4568:4568"
       - "4444:4444"
     volumes:
-      - /database/mysql.conf.d:/etc/mysql/conf.d
-      - /database/data:/var/lib/mysql
+      - /database-galera/mysql.conf.d:/etc/mysql/conf.d
+      - /database-galera/data:/var/lib/mysql
     env:
       MYSQL_INITDB_SKIP_TZINFO=yes
       MYSQL_ROOT_PASSWORD=my-secret-pw
@@ -56,9 +56,9 @@
 # replication and database has been initialized during the previous
 # task. To prevent the initialization, we `touch` the /var/lib/mysql
 # directory.
-- name: Create the /database/data/mysql directory to prevent MariaDB init
+- name: Create the /database-galera/data/mysql directory to prevent MariaDB init
   file:
-    path: /database/data/mysql
+    path: /database-galera/data/mysql
     state: directory
   when: inventory_hostname != dbmaster_node
 
@@ -76,8 +76,8 @@
       - "4568:4568"
       - "4444:4444"
     volumes:
-      - /database/mysql.conf.d:/etc/mysql/conf.d
-      - /database/data:/var/lib/mysql
+      - /database-galera/mysql.conf.d:/etc/mysql/conf.d
+      - /database-galera/data:/var/lib/mysql
     command: --wsrep_node_address="{{ hostvars[inventory_hostname]['ansible_' + database_network]['ipv4']['address'] }}"
   when: inventory_hostname != dbmaster_node
 

@@ -5,13 +5,6 @@
     - { role: common,
         tags: common }
 
-- name: Deploy the grafana
-  hosts: control
-  roles:
-    - { role: grafana,
-        tags: grafana,
-        when: enable_monitoring | bool }
-
 - name: Install registry
   hosts: all
   roles :
@@ -29,14 +22,14 @@
   roles:
     - { role: influxdb,
         tags: influxdb,
-        when: enable_monitoring | bool }
+        when: monitoring | bool }
 
 - name: Deploy the grafana
   hosts: control
   roles:
     - { role: grafana,
         tags: grafana,
-        when: enable_monitoring | bool }
+        when: monitoring | bool }
 
 - name: MariaDB deployment
   hosts: database[0]
@@ -57,10 +50,10 @@
   roles:
     - { role: cadvisor,
         tags: cadvisor,
-        when: enable_monitoring | bool  }
+        when: monitoring | bool  }
     - { role: collectd,
         tags: collectd,
-        when: (db == "mariadb" or db == "galera") and (enable_monitoring | bool) }
+        when: (db == "mariadb" or db == "galera") and (monitoring | bool) }
 
 - name: Sysbench deployment
   hosts: database

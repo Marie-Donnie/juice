@@ -1,0 +1,13 @@
+---
+- name: Find the location of Galera logs
+  command: >
+    docker inspect --format {% raw %}{{.LogPath}}{% endraw %}
+           mariadb-{{ inventory_hostname_short }}
+  register: mariadb_log
+
+- name: Fetching Galera logs
+  fetch:
+    src: "{{ mariadb_log.stdout }}"
+    dest: "{{ backup_dir }}/galera-{{ inventory_hostname_short }}-log.json"
+    flat: yes
+  ignore_errors: True

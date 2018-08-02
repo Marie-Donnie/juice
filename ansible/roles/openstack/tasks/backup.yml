@@ -1,1 +1,20 @@
 ---
+- name: Output OpenStack log from journalctl
+  command: journalctl --unit devstack@* --output short --no-pager
+  register: journalctl_output
+
+- copy:
+    content: "{{ journalctl_output.stdout }}"
+    dest: "/tmp/openstack-{{ inventory_hostname_short }}.log"
+
+- name: Fetching OpenStack log
+  fetch:
+    src: "/tmp/openstack-{{ inventory_hostname_short }}.log"
+    dest: "{{ backup_dir }}/openstack-{{ inventory_hostname_short }}.log"
+    flat: yes
+
+- name: Fetching Devstack log
+  fetch:
+    src: "/tmp/stack-logs"
+    dest: "{{ backup_dir }}/devstack-{{ inventory_hostname_short }}.log"
+    flat: yes

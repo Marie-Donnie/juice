@@ -5,9 +5,9 @@
     state: absent
     force_kill: yes
 
-- name: Unmount /database
+- name: Unmount /database-mariadb
   mount:
-    path: /database
+    path: /database-mariadb
     src: tmpfs
     fstype: tmpfs
     state: unmounted
