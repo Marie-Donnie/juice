@@ -10,4 +10,5 @@
     path: /database-cockroachdb
     src: tmpfs
     fstype: tmpfs
-    state: unmounted
+    state: absent
+

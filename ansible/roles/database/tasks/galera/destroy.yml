@@ -10,4 +10,4 @@
     path: /database-galera
     src: tmpfs
     fstype: tmpfs
-    state: unmounted
+    state: absent

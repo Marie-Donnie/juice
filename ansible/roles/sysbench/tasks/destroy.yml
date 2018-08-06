@@ -1,8 +1,8 @@
 ---
 - name: Remove /sysbench directory
   file:
-    state: absent
     path: /sysbench
+    state: absent
 
 - name: Destroying sysbench container
   docker_container:
