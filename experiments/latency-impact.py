@@ -16,15 +16,16 @@ SWEEPER_DIR = os.path.join(os.getenv('HOME'), 'juice-sweeper-latency-impact')
 
 # G5k parameters
 JOB_NAME = 'juice-latency-impact'
-WALLTIME = '61:59:00'
-RESERVATION = '2018-05-11 19:00:01'
-CLUSTER = 'ecotype'
-SITE = 'nantes'
+WALLTIME = '2:59:00'
+#RESERVATION = '2018-05-11 19:00:01'
+RESERVATION = None
+CLUSTER = 'paravance'
+SITE = 'rennes'
 
 # Experimentation parameters
-DATABASES = ['mariadb', 'galera', 'cockroachdb']
-DELAYS = [50, 150]
-BURST = [False, True]
+DATABASES = ['cockroachdb']
+DELAYS = [0]
+BURST = [False]
 
 CONF = {
   'monitoring': True,
@@ -35,7 +36,7 @@ CONF = {
           'walltime': WALLTIME,
           'reservation': RESERVATION,
           'resources': {'machines': [{'cluster': CLUSTER,
-                                      'nodes': 9,
+                                      'nodes': 3,
                                       'roles': ['chrony',
                                                 'database',
                                                 'sysbench',
@@ -93,13 +94,12 @@ logging.basicConfig(level=logging.INFO)
 
 def init():
   try:
-    j.g5k(config=CONF, force=True)
-    j.inventory()
+    j.deploy(conf=CONF, force=True)
     j.destroy()
     j.emulate(CONF['tc'])
   except Exception as e:
     logging.error(
-        "Setup goes wrong. This is not necessarily a bad news, "
+        "Setup went wrong. This is not necessarily a bad news, "
         "in particular, if it is the first time you run the "
         "experiment: %s" % e)
 
@@ -118,11 +118,8 @@ def teardown():
 def keystone_exp():
     sweeper = ParamSweeper(
         SWEEPER_DIR,
-        sweeps=sweep({
-              'db':    DATABASES
-            , 'delay': DELAYS
-            , 'burst': BURST
-        }))
+        sweeps=sweep({'db': DATABASES, 'delay': DELAYS, 'burst': BURST})
+    )
 
     while sweeper.get_remaining():
         combination = sweeper.get_next()
@@ -138,10 +135,11 @@ def keystone_exp():
                                         # multiple sweeps in parallels
             conf['tc']['constraints'][0]['delay'] = "%sms" % delay
             xp_name = "%s-9-%s-%s" % (db, delay, str(burst)[0])
+            conf['database'] = db
 
             # Let's get it started hun!
-            j.deploy(conf, db, xp_name)
-            j.openstack(db)
+            j.deploy(conf=conf, xp_name=xp_name)
+            j.openstack()
             j.emulate(conf['tc'])
             j.rally(SCENARIOS, "keystone", burst)
             j.backup()
