@@ -1,7 +1,8 @@
 ---
+
 - name: Fetching CockroachDB log
   fetch:
-    src: /database-cockroachdb/logs/cockroachdb.log
+    src: /database-cockroachdb/logs/cockroach.log
     dest: "{{ backup_dir }}/cockroachdb-{{ inventory_hostname_short }}.log"
     flat: yes
   ignore_errors: True
