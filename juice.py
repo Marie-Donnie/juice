@@ -35,7 +35,7 @@ import pickle
 
 from docopt import docopt
 from enoslib.api import (generate_inventory, emulate_network,
-                         validate_network)
+                         validate_network, induce_faults)
 from enoslib.task import enostask, _save_env
 
 from utils import (JUICE_PATH, ANSIBLE_PATH, SYMLINK_NAME, doc,
@@ -262,6 +262,15 @@ keystone]
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
     run_ansible('rally.yml', extra_vars=extra_vars)
+
+
+@doc()
+@enostask()
+def faults(**kwargs):
+    """
+usage: juice faults
+    """
+    induce_faults()
 
 
 ######################################################################

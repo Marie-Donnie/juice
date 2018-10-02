@@ -8,7 +8,7 @@ docopt
 
 # the library it is built on
 # enoslib==1.6.0
-git+https://github.com/BeyondTheClouds/enoslib.git@master # fix the read of ansible/group_vars/all.yml
+-e git+https://github.com/Marie-Donnie/enoslib.git#egg=enoslib # fix the read of ansible/group_vars/all.yml
 # for the analysis of results
 pandas
 matplotlib
@@ -16,3 +16,6 @@ matplotlib
 # For read/write ratio experiment
 PyMySQL # PyMySQL is pure python and those can be installed on the
         # frontend
+
+# to enable the induction of faults in the system
+-e git+https://github.com/Marie-Donnie/os-faults.git#egg=os-faults

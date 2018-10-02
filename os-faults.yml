@@ -1,0 +1,10 @@
+cloud_management:
+  driver: devstack
+  args:
+    address: 10.24.9.52
+    username: root
+    private_key_file: ~/.ssh/id_rsa
+    slaves:
+      - 10.24.9.53
+      - 10.24.9.54
+    iface: eno2
