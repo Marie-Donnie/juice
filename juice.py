@@ -268,7 +268,7 @@ keystone]
 
 @doc()
 @enostask()
-def faults(conf="faults.yml", env=None, **kwargs):
+def faults(conf="faults.yaml", env=None, **kwargs):
     """
 usage: juice faults
     """
@@ -286,7 +286,6 @@ usage: juice faults
             'yaml file or a dict'.format(type(conf)))
 
     induce_faults(config, env['roles'], env['resultdir'])
-    #print(config)
 
 
 ######################################################################
