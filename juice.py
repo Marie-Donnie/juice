@@ -98,7 +98,8 @@ Options:
     else:
         # Data format error
         raise Exception(
-            'conf is type {!r} while it should be a yaml file or a dict'.format(type(conf)))
+            'conf is type {!r} while it should be ' \
+            'a yaml file or a dict'.format(type(conf)))
 
     env['db'] = config.get('database', 'cockroachdb')
     env['monitoring'] = config.get('monitoring', True)
@@ -113,7 +114,8 @@ Options:
             env.update(updated_env)
         else:
             raise Exception(
-                'The provider {!r} is not supported or it lacks a configuration'.format(provider))
+                'The provider {!r} is not supported or '\
+                'it lacks a configuration'.format(provider))
 
     # Generate the Ansible inventory file
     if 'inventory' in tags:
@@ -266,11 +268,25 @@ keystone]
 
 @doc()
 @enostask()
-def faults(**kwargs):
+def faults(conf="faults.yml", env=None, **kwargs):
     """
 usage: juice faults
     """
-    induce_faults()
+    if isinstance(conf, str):
+        # Get the config object from a yaml file
+        with open(conf) as f:
+            config = yaml.load(f)
+    elif isinstance(conf, dict):
+        # Get the config object from a dict
+        config = conf
+    else:
+        # Data format error
+        raise Exception(
+            'conf is type {!r} while it should be a ' \
+            'yaml file or a dict'.format(type(conf)))
+
+    induce_faults(config, env['roles'], env['resultdir'])
+    #print(config)
 
 
 ######################################################################
