@@ -13,7 +13,7 @@ cd juice
 ```
 
 ```bash
-virtualenv -p python3 venv 
+virtualenv -p python3 venv
 source venv/bin/activate
 pip install -U pip
 pip install -r requirements.txt
@@ -23,13 +23,13 @@ pip install -r requirements.txt
 ## Configuration
 
 There is a sample configuration you can use `cp conf.yaml.sample conf.yaml`
-You can then change *conf.yaml* according to your needs. For instance, 
-change the value of database from cockroachdb to mariadb or galera to go 
+You can then change *conf.yaml* according to your needs. For instance,
+change the value of database from cockroachdb to mariadb or galera to go
 with the mariadb or a galera replicated database.
 
 ## Launch
 
-Launch with `./juice.py deploy`. 
+Launch with `./juice.py deploy`.
 
 Once it has been launched, you can destroy the containers using `./juice destroy` and then restart them with `./juice deploy`.
 
@@ -100,6 +100,35 @@ Backup important metrics using `./juice.py backup`.
 ### Destroy
 
 The destroy tasks, called with `./juice.py destroy` removes all dockers and unmount volumes.
+
+### Induce faults
+
+You can induce faults in your deployment with os-faults.
+To do that, `cp faults.yaml.sample faults.yaml` then change `faults.yaml` according to your needs. The syntax is as follows:
+```
+- name: Restart keystone
+  type: service
+  action: restart
+  targets:
+    - definition: keystone
+      when:
+	    ips:
+		   - xxx.xxx.xxx.xxx
+        role: database
+        network: database_network
+```
+The parameters are:
+```
+name - the name of the task
+type - the thing you want to act on (one of service/system_service/nodes/container)
+action - the action you want to make (see https://os-faults.readthedocs.io/en/latest/api.html for a list of action that can be completed)
+targets - the targets of the action (list)
+definition - the name of the service or container you want to act on
+when - defines a set of constraints to apply the action on
+	ips - a list of ips; ips and role/network are mutually exclusive
+	role - the role you defined; ips and role are mutually exclusive
+	network - a specific network you defined; ips and network are mutually exclusive (optional)
+```
 
 ## Help
 

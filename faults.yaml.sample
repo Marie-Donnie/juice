@@ -1,7 +1,7 @@
 - name: Restart cadvisor on databases nodes
   type: container
   action: restart
-  target:
+  targets:
     - definition: cadvisor
       when:
         # ips:
