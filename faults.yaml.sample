@@ -1,8 +1,10 @@
 - name: Restart keystone
-  type: service
+  type: container
   action: restart
   target:
-    - definition: keystone
+    - definition: cadvisor
       when:
+        # ips:
+        #   - 10.24.73.1
         role: database
         network: database_network
