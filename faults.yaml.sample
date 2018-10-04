@@ -1,4 +1,4 @@
-- name: Restart keystone
+- name: Restart cadvisor on databases nodes
   type: container
   action: restart
   target:
