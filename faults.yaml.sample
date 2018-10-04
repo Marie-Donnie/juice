@@ -4,5 +4,5 @@
   target:
     - definition: keystone
       when:
-        target: database
+        role: database
         network: database_network
