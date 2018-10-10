@@ -27,7 +27,8 @@ def doc(doc_param=None):
                 if k.startswith('-'):
                     new_kwargs[k.lstrip('-').replace('-', '_')] = v
             # Proceeds with the function execution
-            fn(*args, **new_kwargs)
+            r = fn(*args, **new_kwargs)
+            return r
         DOC_GLOBAL[fn.__name__] = decorated
         # https://stackoverflow.com/questions/10307696/how-to-put-a-variable-into-python-docstring
         if doc_param:
