@@ -1,6 +1,6 @@
 ---
 - name: Unstack
-  command: /opt/stack/devstac/unstack.sh
+  command: /opt/stack/devstack/unstack.sh
   args:
     removes: /tmp/stack-logs
   become: true
