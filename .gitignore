@@ -123,4 +123,8 @@ sweeper
 
 # conf
 conf.yaml
+
+# faults files
 faults.yaml
+faults-tasks/
+ansible/roles/rally/files/

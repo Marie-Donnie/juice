@@ -15,7 +15,7 @@
 - name: Initialize database
   command: >
     docker run -v /root/rally_home:/home/rally/data \
-    beyondtheclouds/xrally-openstack \
+    beyondtheclouds/xrally-openstack:dev \
     db create
   when:
     - not sqlite.stat.exists
@@ -29,14 +29,14 @@
 - name: Test whether the rally deployment has been created
   command: >
     docker run -v /root/rally_home:/home/rally/data \
-    beyondtheclouds/xrally-openstack \
+    beyondtheclouds/xrally-openstack:dev \
     deployment list
   register: deployment
 
 - name: Deploy discovery context
   docker_container:
     name: "rally-{{ inventory_hostname_short }}"
-    image: "beyondtheclouds/xrally-openstack"
+    image: "beyondtheclouds/xrally-openstack:dev"
     state: started
     volumes:
       - /root/rally_home:/home/rally/data
@@ -49,51 +49,25 @@
 # ----------------------------------- Setup & run rally test
 
 # When --file was used
-- name: files - Specify the scenarios which will be used
-  debug:
-    msg: "Launching following scenarios: {{ rally_files }}"
-  when:
-    - rally_files is defined
-
-- name: Generate scenario execution playboook
-  template:
-    src: rally-scenarios.yaml.j2
-    dest: ./rally-scenarios.yaml
-  run_once: True
-  delegate_to: 127.0.0.1
-  with_list:  "{{ [rally_files] }}"
+- name: Preparing the files
+  include: deploy-files.yml
   when:
     - rally_files is defined
 
 # When --directory was used (default option with keystone)
-- name: directory - Getting files to execute
-  command: >
-    docker run --entrypoint=bash \
-    beyondtheclouds/xrally-openstack \
-    -c "ls -Rp /home/rally/source/samples/tasks/scenarios/{{ rally_directory }} | grep -v / | grep yaml"
-  register: scenarios
+- name: "Preparing the files in directory: {{ rally_directory }}"
+  include: deploy-directory.yml
   when:
     - rally_files is not defined
     - rally_directory is defined
 
-- name: directory - Specify the scenarios which will be used
-  debug:
-    msg: "Launching following scenarios: {{ scenarios.stdout_lines }}"
+# When --tasks was used
+- name: Preparing the tasks
+  include: deploy-task.yml
   when:
-    - rally_files is not defined
-    - rally_directory is defined
+    - rally_tasks is defined
 
-- name: Generate scenario execution playboook
-  template:
-    src: rally-scenarios.yaml.j2
-    dest: ./rally-scenarios.yaml
-  run_once: True
-  delegate_to: 127.0.0.1
-  with_list:  "{{ [scenarios.stdout_lines] }}"
-  when:
-    - rally_files is not defined
-    - rally_directory is defined
-
+# Final run
 - name: Include run scenarios
   include: rally-scenarios.yaml
 
@@ -103,7 +77,7 @@
 - name: Find report identifier
   command: >
     docker run -v /root/rally_home:/home/rally/data \
-    beyondtheclouds/xrally-openstack \
+    beyondtheclouds/xrally-openstack:dev \
     task list --uuids-only \
     --deployment discovery
   register: task_uuid
@@ -111,7 +85,7 @@
 - name: Generating rally reports (html)
   command: >
     docker run -v /root/rally_home:/home/rally/data \
-    beyondtheclouds/xrally-openstack \
+    beyondtheclouds/xrally-openstack:dev \
     task report --uuid {{ item }} \
     --html-static --out \
     /home/rally/data/report-{{ item }}.html
@@ -122,7 +96,7 @@
 - name: Generating rally reports (json)
   command: >
     docker run -v /root/rally_home:/home/rally/data \
-    beyondtheclouds/xrally-openstack \
+    beyondtheclouds/xrally-openstack:dev \
     task report --uuid {{ item }} \
     --json --out \
     /home/rally/data/report-{{ item }}.json

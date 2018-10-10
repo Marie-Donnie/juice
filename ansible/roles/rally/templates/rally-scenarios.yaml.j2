@@ -5,7 +5,7 @@
   command: >
     docker run -v /root/rally_home:/home/rally/data \
     --name {{ scenario | regex_replace("/", "-") }}-{{ lookup('pipe','date +%H-%M-%S') }} \
-    beyondtheclouds/xrally-openstack
+    beyondtheclouds/xrally-openstack:dev
     task start /home/rally/source/samples/tasks/scenarios/{% if rally_directory is defined %}{{ rally_directory }}/{% endif %}{{ scenario }}
     --deployment discovery
   # TODO: find a better failure condition, here it can't fail whatever error happened

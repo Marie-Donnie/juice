@@ -1,0 +1,53 @@
+- name: tasks - Specify the scenarios which will be used
+  debug:
+    msg: "Launching the following tasks: {{ rally_tasks }}"
+
+- name: Copy the required tasks
+  copy:
+    src: "{{ item }}"
+    dest: /root/rally_home/
+  with_list:  "{{ rally_tasks }}"
+
+- name: Remove rally ssh key
+  local_action:
+    module: file
+    state: absent
+    path: "{{ item }}"
+  run_once: true
+  when: rally_os_conf is defined
+  loop:
+    - "~/.ssh/rally"
+    - "~/.ssh/rally.pub"
+
+- name: Create ssh key
+  local_action: command ssh-keygen -t rsa -b 4096 -f ~/.ssh/rally -N ''
+  run_once: true
+  when: rally_os_conf is defined
+
+# We use rally user's uuid to mount the key into the docker (see http://docs.xrally.xyz/projects/openstack/en/latest/install_and_upgrade/install.html?highlight=65500#rally-docker )
+- name: Copy rally key
+  copy:
+    src: ~/.ssh/rally
+    dest: /root/.ssh/rally
+    owner: 65500
+    mode: 0600
+  when: rally_os_conf is defined
+
+- name: Copy public key
+  local_action: command ssh-copy-id -f -i ~/.ssh/rally.pub root@{{ item }}
+  when: rally_os_conf is defined
+  loop: "{{ rally_nodes }}"
+
+- name: Create os-faults.json file
+  copy:
+    content: "{{ rally_os_conf }}"
+    dest: /root/rally_home/os-faults.json
+  when: rally_os_conf is defined
+
+- name: Generate scenario execution playboook
+  template:
+    src: rally-task.yaml.j2
+    dest: ./rally-scenarios.yaml
+  run_once: True
+  delegate_to: 127.0.0.1
+  with_list:  "{{ [rally_tasks] }}"

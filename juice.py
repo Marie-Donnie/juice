@@ -32,6 +32,7 @@ import yaml
 import json
 import operator
 import pickle
+import shutil
 
 from docopt import docopt
 from enoslib.api import (generate_inventory, emulate_network,
@@ -226,9 +227,9 @@ Launch sysbench tests.
 
 @doc()
 @enostask()
-def rally(files, directory, high, env=None, **kwargs):
+def rally(files, directory, tasks, high, env=None, **kwargs):
     """
-usage: juice rally [--files FILE... | --directory DIRECTORY] [--high]
+usage: juice rally (--files FILE... | --directory DIRECTORY | --tasks TASK... [--faults]) [--high]
 
 Benchmark the Openstack
 
@@ -236,12 +237,10 @@ Benchmark the Openstack
 from rally scenarios folder).
   --directory DIRECTORY  Directory that contains rally scenarios. [default:
 keystone]
+  --tasks TASK           Tasks defined by the user
+  --faults               Use faults in the tasks
   --high                 Use high mode or not
     """
-    logging.info("Launching rally using scenarios: %s" % (', '.join(files)))
-    logging.info("Launching rally using all scenarios in %s directory.",
-                 directory)
-
     database_nodes = [host.address for role, hosts in env['roles'].items()
                                    if role.startswith('database')
                                    for host in hosts]
@@ -257,9 +256,27 @@ keystone]
         "rally_nodes": rally_nodes
     }
     if files:
+        logging.info("Launching rally using " \
+                     "scenario(s): %s" % (', '.join(files)))
         extra_vars.update({"rally_files": files})
-    else:
+    elif directory:
+        logging.info("Launching rally using " \
+                     "all scenarios in %s directory.",
+                     directory)
         extra_vars.update({"rally_directory": directory})
+    elif tasks:
+        logging.info("Launching rally using " \
+                     "scenario(s): %s" % (', '.join(tasks)))
+        directory = "ansible/roles/rally/files"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        for task in tasks:
+            shutil.copy2("tasks/"+task, directory)
+        extra_vars.update({"rally_tasks": tasks})
+        if faults:
+            config = faults(conf="faults.yaml", key="~/.ssh/rally",
+                            generate_conf=True)
+            extra_vars.update({"rally_os_conf": config[0]})
 
     # use deploy of each role
     extra_vars.update({"enos_action": "deploy"})
@@ -268,7 +285,8 @@ keystone]
 
 @doc()
 @enostask()
-def faults(conf="faults.yaml", env=None, **kwargs):
+def faults(conf="faults.yaml", generate_conf=False,
+           key="~/.ssh/id_rsa", env=None, **kwargs):
     """
 usage: juice faults
     """
@@ -285,7 +303,10 @@ usage: juice faults
             'conf is type {!r} while it should be a ' \
             'yaml file or a dict'.format(type(conf)))
 
-    induce_faults(config, env['roles'], env['resultdir'])
+    cloud_conf = induce_faults(config, env['roles'],
+                               env['resultdir'], key, generate_conf)
+    return cloud_conf
+
 
 
 ######################################################################

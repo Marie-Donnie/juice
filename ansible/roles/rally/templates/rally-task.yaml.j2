@@ -1,0 +1,15 @@
+---
+
+{% for task in item %}
+- name: Run task {{ task }}
+  command: >
+    docker run -v /root/rally_home:/home/rally/data \
+    -v /root/.ssh/rally:/home/rally/.ssh/rally
+    -v /root/rally_home/os-faults.json:/home/rally/.config/openstack/os-faults.json
+    -e "{{ os_env }}"
+    beyondtheclouds/xrally-openstack
+    task start /home/rally/data/{{ task }}
+    --deployment discovery
+  failed_when: False
+
+{% endfor %}

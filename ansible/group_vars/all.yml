@@ -17,3 +17,4 @@ os_env:
   OS_AUTH_TYPE: password
   OS_PASSWORD: admin
   OS_USERNAME: admin
+  OS_FAULTS_CONFIG: '{{ rally_os_conf if rally_os_conf is defined else none }}'

@@ -1,0 +1,19 @@
+- name: directory - Getting files to execute
+  command: >
+    docker run --entrypoint=bash \
+    beyondtheclouds/xrally-openstack \
+    -c "ls -Rp /home/rally/source/samples/tasks/scenarios/{{ rally_directory }} | grep -v / | grep yaml"
+  register: scenarios
+
+- name: directory - Specify the scenarios which will be used
+  debug:
+    msg: "Launching following scenarios: {{ scenarios.stdout_lines }}"
+
+
+- name: Generate scenario execution playboook
+  template:
+    src: rally-scenarios.yaml.j2
+    dest: ./rally-scenarios.yaml
+  run_once: True
+  delegate_to: 127.0.0.1
+  with_list:  "{{ [scenarios.stdout_lines] }}"
